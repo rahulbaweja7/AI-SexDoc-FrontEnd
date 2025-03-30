@@ -1,56 +1,57 @@
-const voiceBtn = document.getElementById('voiceBtn');
+const startBtn = document.getElementById('startBtn');
+const stopBtn = document.getElementById('stopBtn');
 const listeningStatus = document.getElementById('listeningStatus');
 const chatbox = document.getElementById('chatbox');
 
 // Check for speech recognition support
 const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
 if (!SpeechRecognition) {
-  voiceBtn.disabled = true;
-  voiceBtn.textContent = 'Voice Not Supported';
+  startBtn.disabled = true;
+  stopBtn.disabled = true;
   appendMessage("SERA", "Your browser does not support speech recognition.");
 }
 
 const recognition = new SpeechRecognition();
 recognition.lang = 'en-US';
-recognition.interimResults = false;
+recognition.interimResults = true;
 recognition.maxAlternatives = 1;
 
 let isProcessing = false;
+let userSpeech = "";
 
-voiceBtn.addEventListener('click', () => {
+// Start recording
+startBtn.addEventListener('click', () => {
   if (isProcessing) return;
-
-  voiceBtn.disabled = true;
-  voiceBtn.textContent = 'Listening...';
-  listeningStatus.textContent = 'Listening...';
+  userSpeech = "";
+  startBtn.disabled = true;
+  stopBtn.disabled = false;
+  listeningStatus.textContent = 'Recording...';
   chatbox.classList.add('listening');
-
   recognition.start();
 });
 
-recognition.onresult = async (event) => {
-  isProcessing = true;
+// Stop recording (manual)
+stopBtn.addEventListener('click', () => {
+  recognition.stop();
+  stopBtn.disabled = true;
+  startBtn.disabled = false;
+  listeningStatus.textContent = 'Stopped. Click "Send Message" to proceed.';
+});
 
-  const userSpeech = event.results[0][0].transcript.trim();
-  if (!userSpeech) {
-    appendMessage("SERA", "Could not understand speech.");
-    resetButton();
-    return;
-  }
+// Live update as user speaks
+recognition.onresult = (event) => {
+  const transcript = Array.from(event.results)
+    .map(result => result[0].transcript)
+    .join('');
+  userSpeech = transcript.trim();
+  updateLiveUserMessage(userSpeech);
+};
 
-  appendMessage("You", userSpeech);
-  appendMessage("SERA", "SERA is thinking...");
-
-  try {
-    const aiResponse = await getAIResponse(userSpeech);
-    updateLastBotMessage(aiResponse);
-    await playHumanAudio(aiResponse); // NEW: Human voice!
-  } catch (err) {
-    console.error('AI error:', err);
-    updateLastBotMessage('Error getting response.');
-  } finally {
-    resetButton();
-  }
+// Optional: show status after stopping
+recognition.onend = () => {
+  listeningStatus.textContent = userSpeech
+    ? 'Ready to send message.'
+    : 'No speech captured. Try again.';
 };
 
 recognition.onerror = (event) => {
@@ -59,21 +60,53 @@ recognition.onerror = (event) => {
   resetButton();
 };
 
-recognition.onend = () => {
-  if (voiceBtn.textContent === 'Listening...') resetButton();
-};
+// Handle "Send Message"
+stopBtn.addEventListener('click', async () => {
+  if (!userSpeech || isProcessing) {
+    appendMessage("SERA", "No speech detected. Please try again.");
+    return;
+  }
 
+  isProcessing = true;
+
+  const liveElem = document.getElementById("live-user-msg");
+  if (liveElem) liveElem.remove();
+
+  appendMessage("You", userSpeech);
+  appendMessage("SERA", "SERA is thinking...");
+
+  try {
+    const aiResponse = await getAIResponse(userSpeech);
+
+    // Replace thinking message with typing animation
+    const thinkingElem = chatbox.lastElementChild;
+    if (thinkingElem && thinkingElem.innerHTML.includes("SERA is thinking...")) {
+      thinkingElem.remove();
+    }
+
+     typeBotReply(aiResponse);
+    await playHumanAudio(aiResponse);
+  } catch (err) {
+    console.error('AI error:', err);
+    appendMessage("SERA", 'Error getting response.');
+  } finally {
+    userSpeech = "";
+    resetButton();
+  }
+});
+
+// Reset buttons and status
 function resetButton() {
-  voiceBtn.textContent = 'Start Talking';
-  voiceBtn.disabled = false;
+  startBtn.disabled = false;
+  stopBtn.disabled = true;
   isProcessing = false;
-  listeningStatus.textContent = 'Click below and start talking';
+  listeningStatus.textContent = 'Click "Start Recording" to begin, then "Send Message" to submit.';
   chatbox.classList.remove('listening');
 }
 
+// Call your backend
 async function getAIResponse(input) {
   if (!input.trim()) return "Could you say that again?";
-
   const res = await fetch('http://localhost:3000/ask', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -84,14 +117,13 @@ async function getAIResponse(input) {
   return data.reply || "Sorry, I couldn't get a response.";
 }
 
-// ----------- ElevenLabs Audio Function -----------
-
+// ElevenLabs TTS
 async function playHumanAudio(text) {
   try {
     const response = await fetch("https://api.elevenlabs.io/v1/text-to-speech/EXAVITQu4vr4xnSDxMaL", {
       method: "POST",
       headers: {
-        "xi-api-key": "",
+        "xi-api-key": "sk_1b1f389c14c208c62d0cc8c085e73fbb603c2d59dc143237", // Replace before pushing to GitHub
         "Content-Type": "application/json"
       },
       body: JSON.stringify({
@@ -113,8 +145,7 @@ async function playHumanAudio(text) {
   }
 }
 
-// ----------- Chat UI Functions -----------
-
+// Append permanent message
 function appendMessage(sender, text) {
   const messageElem = document.createElement('div');
   messageElem.style.marginBottom = '0.5rem';
@@ -130,14 +161,46 @@ function appendMessage(sender, text) {
   scrollToBottom();
 }
 
-function updateLastBotMessage(newText) {
-  const messages = chatbox.querySelectorAll('div');
-  const lastMessage = messages[messages.length - 1];
-  if (lastMessage && lastMessage.innerHTML.includes("SERA is thinking...")) {
-    lastMessage.innerHTML = `<strong>SERA:</strong> ${newText}`;
+// Typing animation for SERA
+async function typeBotReply(text) {
+  const botElem = document.createElement("div");
+  botElem.style.marginBottom = '0.5rem';
+  botElem.style.padding = '0.75rem';
+  botElem.style.borderRadius = '10px';
+  botElem.style.maxWidth = '90%';
+  botElem.style.wordWrap = 'break-word';
+  botElem.style.backgroundColor = '#fce4ec';
+  botElem.style.color = '#333';
+  chatbox.appendChild(botElem);
+
+  let index = 0;
+  const interval = setInterval(() => {
+    botElem.innerHTML = `<strong>SERA:</strong> ${text.slice(0, index++)}`;
+    scrollToBottom();
+    if (index > text.length) clearInterval(interval);
+  }, 20);
+}
+
+// Show live-typing for user
+function updateLiveUserMessage(text) {
+  const existing = document.getElementById("live-user-msg");
+
+  if (existing) {
+    existing.innerHTML = `<strong>You:</strong> ${text}`;
   } else {
-    appendMessage("SERA", newText); // fallback just in case
+    const messageElem = document.createElement("div");
+    messageElem.id = "live-user-msg";
+    messageElem.style.marginBottom = '0.5rem';
+    messageElem.style.padding = '0.75rem';
+    messageElem.style.borderRadius = '10px';
+    messageElem.style.maxWidth = '90%';
+    messageElem.style.wordWrap = 'break-word';
+    messageElem.style.backgroundColor = '#e0f0ff';
+    messageElem.style.color = '#333';
+    messageElem.innerHTML = `<strong>You:</strong> ${text}`;
+    chatbox.appendChild(messageElem);
   }
+
   scrollToBottom();
 }
 
