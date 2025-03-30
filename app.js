@@ -3,7 +3,6 @@ const stopBtn = document.getElementById('stopBtn');
 const listeningStatus = document.getElementById('listeningStatus');
 const chatbox = document.getElementById('chatbox');
 
-// Check for speech recognition support
 const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
 if (!SpeechRecognition) {
   startBtn.disabled = true;
@@ -19,7 +18,6 @@ recognition.maxAlternatives = 1;
 let isProcessing = false;
 let userSpeech = "";
 
-// Start recording
 startBtn.addEventListener('click', () => {
   if (isProcessing) return;
   userSpeech = "";
@@ -30,7 +28,6 @@ startBtn.addEventListener('click', () => {
   recognition.start();
 });
 
-// Stop recording (manual)
 stopBtn.addEventListener('click', () => {
   recognition.stop();
   stopBtn.disabled = true;
@@ -38,7 +35,6 @@ stopBtn.addEventListener('click', () => {
   listeningStatus.textContent = 'Stopped. Click "Send Message" to proceed.';
 });
 
-// Live update as user speaks
 recognition.onresult = (event) => {
   const transcript = Array.from(event.results)
     .map(result => result[0].transcript)
@@ -47,7 +43,6 @@ recognition.onresult = (event) => {
   updateLiveUserMessage(userSpeech);
 };
 
-// Optional: show status after stopping
 recognition.onend = () => {
   listeningStatus.textContent = userSpeech
     ? 'Ready to send message.'
@@ -60,7 +55,6 @@ recognition.onerror = (event) => {
   resetButton();
 };
 
-// Handle "Send Message"
 stopBtn.addEventListener('click', async () => {
   if (!userSpeech || isProcessing) {
     appendMessage("SERA", "No speech detected. Please try again.");
@@ -78,7 +72,6 @@ stopBtn.addEventListener('click', async () => {
   try {
     const aiResponse = await getAIResponse(userSpeech);
 
-    // Replace thinking message with typing animation
     const thinkingElem = chatbox.lastElementChild;
     if (thinkingElem && thinkingElem.innerHTML.includes("SERA is thinking...")) {
       thinkingElem.remove();
@@ -95,7 +88,6 @@ stopBtn.addEventListener('click', async () => {
   }
 });
 
-// Reset buttons and status
 function resetButton() {
   startBtn.disabled = false;
   stopBtn.disabled = true;
@@ -104,7 +96,6 @@ function resetButton() {
   chatbox.classList.remove('listening');
 }
 
-// Call your backend
 async function getAIResponse(input) {
   if (!input.trim()) return "Could you say that again?";
   const res = await fetch('http://localhost:3000/ask', {
@@ -117,13 +108,12 @@ async function getAIResponse(input) {
   return data.reply || "Sorry, I couldn't get a response.";
 }
 
-// ElevenLabs TTS
 async function playHumanAudio(text) {
   try {
     const response = await fetch("https://api.elevenlabs.io/v1/text-to-speech/EXAVITQu4vr4xnSDxMaL", {
       method: "POST",
       headers: {
-        "xi-api-key": "sk_1b1f389c14c208c62d0cc8c085e73fbb603c2d59dc143237", // Replace before pushing to GitHub
+        "xi-api-key": "", 
         "Content-Type": "application/json"
       },
       body: JSON.stringify({
@@ -145,7 +135,6 @@ async function playHumanAudio(text) {
   }
 }
 
-// Append permanent message
 function appendMessage(sender, text) {
   const messageElem = document.createElement('div');
   messageElem.style.marginBottom = '0.5rem';
@@ -161,7 +150,6 @@ function appendMessage(sender, text) {
   scrollToBottom();
 }
 
-// Typing animation for SERA
 async function typeBotReply(text) {
   const botElem = document.createElement("div");
   botElem.style.marginBottom = '0.5rem';
@@ -181,7 +169,6 @@ async function typeBotReply(text) {
   }, 20);
 }
 
-// Show live-typing for user
 function updateLiveUserMessage(text) {
   const existing = document.getElementById("live-user-msg");
 
