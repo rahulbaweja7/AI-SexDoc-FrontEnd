@@ -1,146 +1,103 @@
 const voiceBtn = document.getElementById('voiceBtn');
 const userLine = document.getElementById('userLine');
 const botLine = document.getElementById('botLine');
+const listeningStatus = document.getElementById('listeningStatus');
 
-// Check for browser support
-if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
+// Check for speech recognition support
+const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+if (!SpeechRecognition) {
   voiceBtn.disabled = true;
   voiceBtn.textContent = 'Voice Not Supported';
-  botLine.textContent = 'Your browser does not support speech recognition';
+  botLine.textContent = 'Your browser does not support speech recognition.';
 }
 
-const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
 const recognition = new SpeechRecognition();
-
 recognition.lang = 'en-US';
 recognition.interimResults = false;
 recognition.maxAlternatives = 1;
 
 let isProcessing = false;
 
-voiceBtn.addEventListener('click', async () => {
+voiceBtn.addEventListener('click', () => {
   if (isProcessing) return;
-  
-  try {
-    voiceBtn.disabled = true;
-    voiceBtn.textContent = 'Listening...';
-    recognition.start();
-  } catch (error) {
-    console.error('Recognition start error:', error);
-    botLine.textContent = 'Failed to start voice recognition';
-    resetButton();
-  }
+
+  voiceBtn.disabled = true;
+  voiceBtn.textContent = 'Listening...';
+  listeningStatus.textContent = 'Listening...';
+  document.getElementById('chatbox').classList.add('listening');
+
+  recognition.start();
 });
 
 recognition.onresult = async (event) => {
   isProcessing = true;
+
   const userSpeech = event.results[0][0].transcript.trim();
-  
   if (!userSpeech) {
-    botLine.textContent = 'Could not understand speech';
+    botLine.textContent = 'Could not understand speech.';
     resetButton();
     return;
   }
 
   userLine.textContent = `You: ${userSpeech}`;
-  botLine.textContent = 'Dr. AI: Thinking...';
-  
+  botLine.textContent = 'SERA is thinking...';
+
   try {
     const aiResponse = await getAIResponse(userSpeech);
-    botLine.textContent = `Dr. AI: ${aiResponse}`;
+    botLine.textContent = `SERA: ${aiResponse}`;
     speakResponseWithFemaleVoice(aiResponse);
-  } catch (error) {
-    console.error('AI response error:', error);
-    botLine.textContent = 'Sorry, I encountered an error processing your request';
+  } catch (err) {
+    console.error('AI error:', err);
+    botLine.textContent = 'Error getting response.';
   } finally {
     resetButton();
   }
 };
 
 recognition.onerror = (event) => {
-  console.error('Recognition error:', event.error);
-  botLine.textContent = `Error: ${event.error === 'no-speech' ? 'No speech detected' : 'Voice recognition failed'}`;
+  console.error('Speech error:', event.error);
+  botLine.textContent = `Error: ${event.error}`;
   resetButton();
 };
 
 recognition.onend = () => {
-  if (voiceBtn.textContent === 'Listening...') {
-    resetButton();
-  }
+  if (voiceBtn.textContent === 'Listening...') resetButton();
 };
 
 function resetButton() {
   voiceBtn.textContent = 'Start Talking';
   voiceBtn.disabled = false;
   isProcessing = false;
+  listeningStatus.textContent = 'Click below and start talking';
+  document.getElementById('chatbox').classList.remove('listening');
 }
 
 function speakResponseWithFemaleVoice(text) {
   if ('speechSynthesis' in window) {
-    // Get all available voices
-    const voices = window.speechSynthesis.getVoices();
-    
-    // Find a female voice (filter for English female voices)
-    let femaleVoice = voices.find(voice => {
-      return voice.lang.includes('en') && 
-             (voice.name.includes('Female') || 
-              voice.name.includes('Woman') || 
-              voice.name.includes('Samantha') || 
-              voice.name.includes('Zira'));
-    });
+    const voices = speechSynthesis.getVoices();
+    let femaleVoice = voices.find(v => v.lang.includes('en') && (
+      v.name.includes('Female') || v.name.includes('Samantha') || v.name.includes('Zira')
+    )) || voices.find(v => v.lang.includes('en'));
 
-    // Fallback to first available English voice if no specific female voice found
-    if (!femaleVoice) {
-      femaleVoice = voices.find(voice => voice.lang.includes('en'));
-    }
-
-    if (femaleVoice) {
-      const utterance = new SpeechSynthesisUtterance(text);
-      utterance.voice = femaleVoice;
-      utterance.rate = 1; // Slightly slower than normal
-      utterance.pitch = 1.1; // Slightly higher pitch
-      speechSynthesis.speak(utterance);
-    } else {
-      console.warn('No female voice found - using default voice');
-      const utterance = new SpeechSynthesisUtterance(text);
-      speechSynthesis.speak(utterance);
-    }
+    const utterance = new SpeechSynthesisUtterance(text);
+    if (femaleVoice) utterance.voice = femaleVoice;
+    utterance.rate = 1;
+    utterance.pitch = 1.1;
+    speechSynthesis.speak(utterance);
   }
 }
 
-// Load voices when they become available
-window.speechSynthesis.onvoiceschanged = function() {
-  console.log('Voices loaded');
-};
+window.speechSynthesis.onvoiceschanged = () => console.log("Voices loaded");
 
 async function getAIResponse(input) {
-  if (!input || typeof input !== 'string' || input.trim().length === 0) {
-    return "I didn't quite catch that. Could you please repeat your question?";
-  }
+  if (!input.trim()) return "Could you say that again?";
 
-  try {
-    const response = await fetch('http://localhost:3000/ask', {  
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ userMessage: input })  
-    });
+  const res = await fetch('http://localhost:3000/ask', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ userMessage: input })
+  });
 
-    if (!response.ok) {
-      throw new Error(`API request failed with status ${response.status}`);
-    }
-
-    const data = await response.json();
-
-    // console.log("Response from backend:", data);  
-
-    if (!data || typeof data.reply !== 'string') {
-      throw new Error('Invalid response format from API');
-    }
-
-    return data.reply;
-
-  } catch (error) {
-    console.error('Error getting AI response:', error);
-    return "Something went wrong while getting the response.";
-  }
+  const data = await res.json();
+  return data.reply || "Sorry, I couldn't get a response.";
 }
