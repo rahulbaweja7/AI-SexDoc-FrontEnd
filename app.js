@@ -114,33 +114,33 @@ window.speechSynthesis.onvoiceschanged = function() {
 };
 
 async function getAIResponse(input) {
-  // First check if input is empty
   if (!input || typeof input !== 'string' || input.trim().length === 0) {
     return "I didn't quite catch that. Could you please repeat your question?";
   }
 
   try {
-    // Try to get response from API
-    const response = await fetch('/api/chat', {
+    const response = await fetch('http://localhost:3000/ask', {  
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ message: input })
+      body: JSON.stringify({ userMessage: input })  
     });
-    
+
     if (!response.ok) {
       throw new Error(`API request failed with status ${response.status}`);
     }
-    
+
     const data = await response.json();
-    
-    // Validate the response structure
+
+    // console.log("Response from backend:", data);  
+
     if (!data || typeof data.reply !== 'string') {
       throw new Error('Invalid response format from API');
     }
-    
+
     return data.reply;
-    
+
   } catch (error) {
     console.error('Error getting AI response:', error);
+    return "Something went wrong while getting the response.";
   }
 }

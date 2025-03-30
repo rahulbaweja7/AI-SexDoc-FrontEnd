@@ -1,34 +1,23 @@
+require('dotenv').config(); // Load env first
+const connectToMongo = require('./utils/mongodb');
+connectToMongo(); // Connect to MongoDB
+
 const express = require('express');
 const path = require('path');
-const cors = require('cors'); // Install with: npm install cors
+const cors = require('cors');
 
 const app = express();
 
 // Middleware
 app.use(cors());
-app.use(express.static(path.join(__dirname, 'public')));
 app.use(express.json());
+app.use(express.static(path.join(__dirname, 'public')));
 
-// API endpoint
-app.post('/api/message', (req, res) => {
-  try {
-    const userMsg = req.body.message;
-    
-    if (!userMsg || typeof userMsg !== 'string') {
-      return res.status(400).json({ error: 'Invalid message format' });
-    }
+// ✅ Use your actual AI route here
+const askRoute = require('./routes/ask');
+app.use('/ask', askRoute); // This uses OpenAI and stores history
 
-    // Replace this with your OpenAI call later
-    const fakeReply = `Thanks for asking about "${userMsg}". Always happy to help with your sexual health questions.`;
-
-    res.json({ reply: fakeReply });
-  } catch (error) {
-    console.error('Error processing message:', error);
-    res.status(500).json({ error: 'Internal server error' });
-  }
-});
-
-// Error handling middleware
+// Error handling
 app.use((err, req, res, next) => {
   console.error(err.stack);
   res.status(500).json({ error: 'Something went wrong!' });
@@ -36,5 +25,5 @@ app.use((err, req, res, next) => {
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
-  console.log(`Server listening at http://localhost:${PORT}`);
+  console.log(`✅ Server running at http://localhost:${PORT}`);
 });
