@@ -44,7 +44,7 @@ recognition.onresult = async (event) => {
   try {
     const aiResponse = await getAIResponse(userSpeech);
     updateLastBotMessage(aiResponse);
-    speakResponseWithFemaleVoice(aiResponse);
+    await playHumanAudio(aiResponse); // NEW: Human voice!
   } catch (err) {
     console.error('AI error:', err);
     updateLastBotMessage('Error getting response.');
@@ -71,23 +71,6 @@ function resetButton() {
   chatbox.classList.remove('listening');
 }
 
-function speakResponseWithFemaleVoice(text) {
-  if ('speechSynthesis' in window) {
-    const voices = speechSynthesis.getVoices();
-    let femaleVoice = voices.find(v => v.lang.includes('en') && (
-      v.name.includes('Female') || v.name.includes('Samantha') || v.name.includes('Zira')
-    )) || voices.find(v => v.lang.includes('en'));
-
-    const utterance = new SpeechSynthesisUtterance(text);
-    if (femaleVoice) utterance.voice = femaleVoice;
-    utterance.rate = 1;
-    utterance.pitch = 1.1;
-    speechSynthesis.speak(utterance);
-  }
-}
-
-window.speechSynthesis.onvoiceschanged = () => console.log("Voices loaded");
-
 async function getAIResponse(input) {
   if (!input.trim()) return "Could you say that again?";
 
@@ -99,6 +82,35 @@ async function getAIResponse(input) {
 
   const data = await res.json();
   return data.reply || "Sorry, I couldn't get a response.";
+}
+
+// ----------- ElevenLabs Audio Function -----------
+
+async function playHumanAudio(text) {
+  try {
+    const response = await fetch("https://api.elevenlabs.io/v1/text-to-speech/EXAVITQu4vr4xnSDxMaL", {
+      method: "POST",
+      headers: {
+        "xi-api-key": "",
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        text: text,
+        model_id: "eleven_monolingual_v1",
+        voice_settings: {
+          stability: 0.7,
+          similarity_boost: 0.8
+        }
+      })
+    });
+
+    const audioBlob = await response.blob();
+    const audioUrl = URL.createObjectURL(audioBlob);
+    const audio = new Audio(audioUrl);
+    audio.play();
+  } catch (err) {
+    console.error("ElevenLabs TTS error:", err);
+  }
 }
 
 // ----------- Chat UI Functions -----------
