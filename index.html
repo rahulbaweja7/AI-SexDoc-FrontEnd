@@ -34,10 +34,19 @@
           <h1>Here to Listen</h1>
 
           <!-- Chat Display -->
-          <div class="chatbox" id="chatbox">
-            <p id="userLine">You:</p>
-            <p id="botLine">SERA:</p>
-          </div>
+          <!-- Chat Display -->
+        <div class="chatbox" id="chatbox" style="
+        max-height: 400px;
+        overflow-y: auto;
+        padding: 1rem;
+        background-color: #fff;
+        border-radius: 15px;
+        box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        margin-bottom: 1rem;
+        ">
+        <!-- Messages will be dynamically added here -->
+        </div>
+
 
           <!-- Listening Feedback -->
           <p id="listeningStatus" style="margin-bottom: 1rem">

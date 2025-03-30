@@ -1,14 +1,13 @@
 const voiceBtn = document.getElementById('voiceBtn');
-const userLine = document.getElementById('userLine');
-const botLine = document.getElementById('botLine');
 const listeningStatus = document.getElementById('listeningStatus');
+const chatbox = document.getElementById('chatbox');
 
 // Check for speech recognition support
 const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
 if (!SpeechRecognition) {
   voiceBtn.disabled = true;
   voiceBtn.textContent = 'Voice Not Supported';
-  botLine.textContent = 'Your browser does not support speech recognition.';
+  appendMessage("SERA", "Your browser does not support speech recognition.");
 }
 
 const recognition = new SpeechRecognition();
@@ -24,7 +23,7 @@ voiceBtn.addEventListener('click', () => {
   voiceBtn.disabled = true;
   voiceBtn.textContent = 'Listening...';
   listeningStatus.textContent = 'Listening...';
-  document.getElementById('chatbox').classList.add('listening');
+  chatbox.classList.add('listening');
 
   recognition.start();
 });
@@ -34,21 +33,21 @@ recognition.onresult = async (event) => {
 
   const userSpeech = event.results[0][0].transcript.trim();
   if (!userSpeech) {
-    botLine.textContent = 'Could not understand speech.';
+    appendMessage("SERA", "Could not understand speech.");
     resetButton();
     return;
   }
 
-  userLine.textContent = `You: ${userSpeech}`;
-  botLine.textContent = 'SERA is thinking...';
+  appendMessage("You", userSpeech);
+  appendMessage("SERA", "SERA is thinking...");
 
   try {
     const aiResponse = await getAIResponse(userSpeech);
-    botLine.textContent = `SERA: ${aiResponse}`;
+    updateLastBotMessage(aiResponse);
     speakResponseWithFemaleVoice(aiResponse);
   } catch (err) {
     console.error('AI error:', err);
-    botLine.textContent = 'Error getting response.';
+    updateLastBotMessage('Error getting response.');
   } finally {
     resetButton();
   }
@@ -56,7 +55,7 @@ recognition.onresult = async (event) => {
 
 recognition.onerror = (event) => {
   console.error('Speech error:', event.error);
-  botLine.textContent = `Error: ${event.error}`;
+  appendMessage("SERA", `Error: ${event.error}`);
   resetButton();
 };
 
@@ -69,7 +68,7 @@ function resetButton() {
   voiceBtn.disabled = false;
   isProcessing = false;
   listeningStatus.textContent = 'Click below and start talking';
-  document.getElementById('chatbox').classList.remove('listening');
+  chatbox.classList.remove('listening');
 }
 
 function speakResponseWithFemaleVoice(text) {
@@ -100,4 +99,36 @@ async function getAIResponse(input) {
 
   const data = await res.json();
   return data.reply || "Sorry, I couldn't get a response.";
+}
+
+// ----------- Chat UI Functions -----------
+
+function appendMessage(sender, text) {
+  const messageElem = document.createElement('div');
+  messageElem.style.marginBottom = '0.5rem';
+  messageElem.style.padding = '0.75rem';
+  messageElem.style.borderRadius = '10px';
+  messageElem.style.maxWidth = '90%';
+  messageElem.style.wordWrap = 'break-word';
+  messageElem.style.backgroundColor = sender === "You" ? '#e0f0ff' : '#fce4ec';
+  messageElem.style.color = '#333';
+  messageElem.innerHTML = `<strong>${sender}:</strong> ${text}`;
+
+  chatbox.appendChild(messageElem);
+  scrollToBottom();
+}
+
+function updateLastBotMessage(newText) {
+  const messages = chatbox.querySelectorAll('div');
+  const lastMessage = messages[messages.length - 1];
+  if (lastMessage && lastMessage.innerHTML.includes("SERA is thinking...")) {
+    lastMessage.innerHTML = `<strong>SERA:</strong> ${newText}`;
+  } else {
+    appendMessage("SERA", newText); // fallback just in case
+  }
+  scrollToBottom();
+}
+
+function scrollToBottom() {
+  chatbox.scrollTop = chatbox.scrollHeight;
 }
