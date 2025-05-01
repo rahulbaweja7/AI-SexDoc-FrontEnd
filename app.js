@@ -1,4 +1,5 @@
-// 🔐 Check auth
+const API_BASE = "https://ai-sexdoc-backend.onrender.com";
+
 if (!localStorage.getItem("token")) {
   window.location.href = "login.html";
 }
@@ -20,13 +21,11 @@ let isProcessing = false;
 let isTypingStopped = false;
 let preferredVoice = null;
 
-// 🔊 Preload preferred voice
 window.speechSynthesis.onvoiceschanged = () => {
   const voices = speechSynthesis.getVoices();
   preferredVoice = voices.find(v => v.name.includes("Samantha") || v.name.includes("Zira")) || voices.find(v => v.lang.includes("en"));
 };
 
-// 🎙 Start recording
 startBtn.addEventListener("click", () => {
   if (isProcessing) return;
   userSpeech = "";
@@ -35,7 +34,6 @@ startBtn.addEventListener("click", () => {
   listeningStatus.textContent = "Recording...";
 });
 
-// 🛑 Stop recording + interrupt typing/audio
 stopBtn.addEventListener("click", () => {
   recognition.stop();
   isTypingStopped = true;
@@ -43,13 +41,11 @@ stopBtn.addEventListener("click", () => {
   listeningStatus.textContent = "Typing or voice interrupted.";
 });
 
-// 🧠 Transcribe voice
 recognition.onresult = (e) => {
   const transcript = Array.from(e.results).map(r => r[0].transcript).join('');
   userSpeech = transcript.trim();
 };
 
-// ✅ Finish recording
 recognition.onend = () => {
   if (userSpeech) {
     sendToBot(userSpeech);
@@ -59,7 +55,6 @@ recognition.onend = () => {
   }
 };
 
-// ✉️ Send typed input
 sendBtn.addEventListener("click", () => {
   const text = textInput.value.trim();
   if (text) {
@@ -68,7 +63,6 @@ sendBtn.addEventListener("click", () => {
   }
 });
 
-// 💬 Main message handler
 function sendToBot(text) {
   appendMessage("You", text);
   isTypingStopped = false;
@@ -89,9 +83,8 @@ function sendToBot(text) {
     });
 }
 
-// 🔗 API request to backend with token
 async function getAIResponse(input) {
-  const res = await fetch('http://localhost:3000/ask', {
+  const res = await fetch(`${API_BASE}/ask`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -110,7 +103,6 @@ async function getAIResponse(input) {
   return data.reply || "Sorry, I couldn't get a response.";
 }
 
-// 🧾 Display message
 function appendMessage(sender, text) {
   const msg = document.createElement("div");
   msg.style.marginBottom = "0.5rem";
@@ -123,7 +115,6 @@ function appendMessage(sender, text) {
   chatbox.scrollTop = chatbox.scrollHeight;
 }
 
-// ✍️ Typing animation
 function typeBotReply(text) {
   const msg = document.createElement("div");
   msg.style.marginBottom = "0.5rem";
@@ -146,7 +137,6 @@ function typeBotReply(text) {
   }, 35);
 }
 
-// 🔊 Play audio with voice
 function playVoice(text) {
   const utterance = new SpeechSynthesisUtterance(text);
   if (preferredVoice) utterance.voice = preferredVoice;
@@ -156,7 +146,6 @@ function playVoice(text) {
   speechSynthesis.speak(utterance);
 }
 
-// 🔐 Logout handler
 function logout() {
   localStorage.removeItem("token");
   window.location.href = "login.html";
