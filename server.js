@@ -1,26 +1,17 @@
-require('dotenv').config(); 
-const connectToMongo = require('./utils/mongodb');
-connectToMongo(); 
-
 const express = require('express');
 const path = require('path');
-const cors = require('cors');
 
 const app = express();
+const PORT = process.env.PORT || 5500;
 
-app.use(cors());
-app.use(express.json());
-app.use(express.static(path.join(__dirname, 'public')));
+// ✅ Serve static files (HTML, CSS, JS, images)
+app.use(express.static(path.join(__dirname)));
 
-const askRoute = require('./routes/ask');
-app.use('/ask', askRoute); 
-
-app.use((err, req, res, next) => {
-  console.error(err.stack);
-  res.status(500).json({ error: 'Something went wrong!' });
+// ✅ Fallback: send index.html for any route
+app.get('*', (req, res) => {
+  res.sendFile(path.join(__dirname, 'index.html'));
 });
 
-const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
-  console.log(`✅ Server running at http://localhost:${PORT}`);
+  console.log(`🚀 Frontend running at http://localhost:${PORT}`);
 });

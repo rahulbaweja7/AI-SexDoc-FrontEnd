@@ -1,196 +1,163 @@
-const startBtn = document.getElementById('startBtn');
-const stopBtn = document.getElementById('stopBtn');
-const listeningStatus = document.getElementById('listeningStatus');
-const chatbox = document.getElementById('chatbox');
-
-const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-if (!SpeechRecognition) {
-  startBtn.disabled = true;
-  stopBtn.disabled = true;
-  appendMessage("SERA", "Your browser does not support speech recognition.");
+// 🔐 Check auth
+if (!localStorage.getItem("token")) {
+  window.location.href = "login.html";
 }
 
+const startBtn = document.getElementById("startBtn");
+const stopBtn = document.getElementById("stopBtn");
+const sendBtn = document.getElementById("sendBtn");
+const textInput = document.getElementById("textInput");
+const chatbox = document.getElementById("chatbox");
+const listeningStatus = document.getElementById("listeningStatus");
+
+const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
 const recognition = new SpeechRecognition();
 recognition.lang = 'en-US';
 recognition.interimResults = true;
-recognition.maxAlternatives = 1;
 
-let isProcessing = false;
 let userSpeech = "";
+let isProcessing = false;
+let isTypingStopped = false;
+let preferredVoice = null;
 
-startBtn.addEventListener('click', () => {
+// 🔊 Preload preferred voice
+window.speechSynthesis.onvoiceschanged = () => {
+  const voices = speechSynthesis.getVoices();
+  preferredVoice = voices.find(v => v.name.includes("Samantha") || v.name.includes("Zira")) || voices.find(v => v.lang.includes("en"));
+};
+
+// 🎙 Start recording
+startBtn.addEventListener("click", () => {
   if (isProcessing) return;
   userSpeech = "";
-  startBtn.disabled = true;
-  stopBtn.disabled = false;
-  listeningStatus.textContent = 'Recording...';
-  chatbox.classList.add('listening');
   recognition.start();
+  startBtn.disabled = true;
+  listeningStatus.textContent = "Recording...";
 });
 
-stopBtn.addEventListener('click', () => {
+// 🛑 Stop recording + interrupt typing/audio
+stopBtn.addEventListener("click", () => {
   recognition.stop();
-  stopBtn.disabled = true;
-  startBtn.disabled = false;
-  listeningStatus.textContent = 'Stopped. Click "Send Message" to proceed.';
+  isTypingStopped = true;
+  speechSynthesis.cancel();
+  listeningStatus.textContent = "Typing or voice interrupted.";
 });
 
-recognition.onresult = (event) => {
-  const transcript = Array.from(event.results)
-    .map(result => result[0].transcript)
-    .join('');
+// 🧠 Transcribe voice
+recognition.onresult = (e) => {
+  const transcript = Array.from(e.results).map(r => r[0].transcript).join('');
   userSpeech = transcript.trim();
-  updateLiveUserMessage(userSpeech);
 };
 
+// ✅ Finish recording
 recognition.onend = () => {
-  listeningStatus.textContent = userSpeech
-    ? 'Ready to send message.'
-    : 'No speech captured. Try again.';
-};
-
-recognition.onerror = (event) => {
-  console.error('Speech error:', event.error);
-  appendMessage("SERA", `Error: ${event.error}`);
-  resetButton();
-};
-
-stopBtn.addEventListener('click', async () => {
-  if (!userSpeech || isProcessing) {
-    appendMessage("SERA", "No speech detected. Please try again.");
-    return;
+  if (userSpeech) {
+    sendToBot(userSpeech);
+  } else {
+    listeningStatus.textContent = "No speech detected.";
+    startBtn.disabled = false;
   }
+};
 
+// ✉️ Send typed input
+sendBtn.addEventListener("click", () => {
+  const text = textInput.value.trim();
+  if (text) {
+    sendToBot(text);
+    textInput.value = "";
+  }
+});
+
+// 💬 Main message handler
+function sendToBot(text) {
+  appendMessage("You", text);
+  isTypingStopped = false;
   isProcessing = true;
 
-  const liveElem = document.getElementById("live-user-msg");
-  if (liveElem) liveElem.remove();
-
-  appendMessage("You", userSpeech);
-  appendMessage("SERA", "SERA is thinking...");
-
-  try {
-    const aiResponse = await getAIResponse(userSpeech);
-
-    const thinkingElem = chatbox.lastElementChild;
-    if (thinkingElem && thinkingElem.innerHTML.includes("SERA is thinking...")) {
-      thinkingElem.remove();
-    }
-
-     typeBotReply(aiResponse);
-    await playHumanAudio(aiResponse);
-  } catch (err) {
-    console.error('AI error:', err);
-    appendMessage("SERA", 'Error getting response.');
-  } finally {
-    userSpeech = "";
-    resetButton();
-  }
-});
-
-function resetButton() {
-  startBtn.disabled = false;
-  stopBtn.disabled = true;
-  isProcessing = false;
-  listeningStatus.textContent = 'Click "Start Recording" to begin, then "Send Message" to submit.';
-  chatbox.classList.remove('listening');
+  getAIResponse(text)
+    .then(reply => {
+      playVoice(reply);
+      typeBotReply(reply);
+    })
+    .catch(err => {
+      console.error(err);
+      appendMessage("SERA", "Something went wrong.");
+    })
+    .finally(() => {
+      isProcessing = false;
+      startBtn.disabled = false;
+    });
 }
 
+// 🔗 API request to backend with token
 async function getAIResponse(input) {
-  if (!input.trim()) return "Could you say that again?";
   const res = await fetch('http://localhost:3000/ask', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': 'Bearer ' + localStorage.getItem("token")
+    },
     body: JSON.stringify({ userMessage: input })
   });
+
+  if (res.status === 401) {
+    alert("Session expired. Please log in again.");
+    logout();
+    return;
+  }
 
   const data = await res.json();
   return data.reply || "Sorry, I couldn't get a response.";
 }
 
-async function playHumanAudio(text) {
-  try {
-    const response = await fetch("https://api.elevenlabs.io/v1/text-to-speech/EXAVITQu4vr4xnSDxMaL", {
-      method: "POST",
-      headers: {
-        "xi-api-key": "", 
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({
-        text: text,
-        model_id: "eleven_monolingual_v1",
-        voice_settings: {
-          stability: 0.7,
-          similarity_boost: 0.8
-        }
-      })
-    });
-
-    const audioBlob = await response.blob();
-    const audioUrl = URL.createObjectURL(audioBlob);
-    const audio = new Audio(audioUrl);
-    audio.play();
-  } catch (err) {
-    console.error("ElevenLabs TTS error:", err);
-  }
-}
-
+// 🧾 Display message
 function appendMessage(sender, text) {
-  const messageElem = document.createElement('div');
-  messageElem.style.marginBottom = '0.5rem';
-  messageElem.style.padding = '0.75rem';
-  messageElem.style.borderRadius = '10px';
-  messageElem.style.maxWidth = '90%';
-  messageElem.style.wordWrap = 'break-word';
-  messageElem.style.backgroundColor = sender === "You" ? '#e0f0ff' : '#fce4ec';
-  messageElem.style.color = '#333';
-  messageElem.innerHTML = `<strong>${sender}:</strong> ${text}`;
-
-  chatbox.appendChild(messageElem);
-  scrollToBottom();
+  const msg = document.createElement("div");
+  msg.style.marginBottom = "0.5rem";
+  msg.style.padding = "0.75rem";
+  msg.style.borderRadius = "10px";
+  msg.style.backgroundColor = sender === "You" ? "#e0f0ff" : "#fce4ec";
+  msg.style.color = "#333";
+  msg.innerHTML = `<strong>${sender}:</strong> ${text}`;
+  chatbox.appendChild(msg);
+  chatbox.scrollTop = chatbox.scrollHeight;
 }
 
-async function typeBotReply(text) {
-  const botElem = document.createElement("div");
-  botElem.style.marginBottom = '0.5rem';
-  botElem.style.padding = '0.75rem';
-  botElem.style.borderRadius = '10px';
-  botElem.style.maxWidth = '90%';
-  botElem.style.wordWrap = 'break-word';
-  botElem.style.backgroundColor = '#fce4ec';
-  botElem.style.color = '#333';
-  chatbox.appendChild(botElem);
+// ✍️ Typing animation
+function typeBotReply(text) {
+  const msg = document.createElement("div");
+  msg.style.marginBottom = "0.5rem";
+  msg.style.padding = "0.75rem";
+  msg.style.borderRadius = "10px";
+  msg.style.backgroundColor = "#fce4ec";
+  msg.style.color = "#333";
+  msg.innerHTML = "<strong>SERA:</strong> ";
+  chatbox.appendChild(msg);
 
   let index = 0;
   const interval = setInterval(() => {
-    botElem.innerHTML = `<strong>SERA:</strong> ${text.slice(0, index++)}`;
-    scrollToBottom();
+    if (isTypingStopped) {
+      clearInterval(interval);
+      return;
+    }
+    msg.innerHTML = `<strong>SERA:</strong> ${text.slice(0, index++)}`;
+    chatbox.scrollTop = chatbox.scrollHeight;
     if (index > text.length) clearInterval(interval);
-  }, 20);
+  }, 35);
 }
 
-function updateLiveUserMessage(text) {
-  const existing = document.getElementById("live-user-msg");
-
-  if (existing) {
-    existing.innerHTML = `<strong>You:</strong> ${text}`;
-  } else {
-    const messageElem = document.createElement("div");
-    messageElem.id = "live-user-msg";
-    messageElem.style.marginBottom = '0.5rem';
-    messageElem.style.padding = '0.75rem';
-    messageElem.style.borderRadius = '10px';
-    messageElem.style.maxWidth = '90%';
-    messageElem.style.wordWrap = 'break-word';
-    messageElem.style.backgroundColor = '#e0f0ff';
-    messageElem.style.color = '#333';
-    messageElem.innerHTML = `<strong>You:</strong> ${text}`;
-    chatbox.appendChild(messageElem);
-  }
-
-  scrollToBottom();
+// 🔊 Play audio with voice
+function playVoice(text) {
+  const utterance = new SpeechSynthesisUtterance(text);
+  if (preferredVoice) utterance.voice = preferredVoice;
+  utterance.rate = 1;
+  utterance.pitch = 1.05;
+  speechSynthesis.cancel();
+  speechSynthesis.speak(utterance);
 }
 
-function scrollToBottom() {
-  chatbox.scrollTop = chatbox.scrollHeight;
+// 🔐 Logout handler
+function logout() {
+  localStorage.removeItem("token");
+  window.location.href = "login.html";
 }
