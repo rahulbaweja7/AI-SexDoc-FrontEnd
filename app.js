@@ -1,9 +1,5 @@
 const API_BASE = "https://ai-sexdoc-backend.onrender.com";
 
-if (!localStorage.getItem("token")) {
-  window.location.href = "login.html";
-}
-
 const startBtn = document.getElementById("startBtn");
 const stopBtn = document.getElementById("stopBtn");
 const sendBtn = document.getElementById("sendBtn");
@@ -88,16 +84,11 @@ async function getAIResponse(input) {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'Authorization': 'Bearer ' + localStorage.getItem("token")
+      // Public access: no Authorization header
     },
     body: JSON.stringify({ userMessage: input })
   });
 
-  if (res.status === 401) {
-    alert("Session expired. Please log in again.");
-    logout();
-    return;
-  }
 
   const data = await res.json();
   return data.reply || "Sorry, I couldn't get a response.";
