@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -115,9 +116,40 @@
     .card h3 { margin: 8px 0; }
     .card p { color: var(--muted); }
 
+    /* Stats */
+    .stats { margin-top: 56px; }
+    .stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
+    .stat { background: #ffffffaa; backdrop-filter: blur(6px); border: 1px solid #eef2ff; border-radius: 16px; padding: 16px; text-align: center; box-shadow: 0 8px 24px rgba(2,6,23,.05); }
+    .stat .num { font-weight: 800; font-size: 28px; }
+    .stat .label { color: var(--muted); font-weight: 600; }
+
+    /* Steps */
+    .how { margin-top: 72px; }
+    .steps { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+    .step { background: var(--card); border: 1px solid #eef2ff; border-radius: 16px; padding: 20px; }
+    .step .n { width: 36px; height: 36px; border-radius: 999px; display: inline-flex; align-items: center; justify-content: center; background: #eef2ff; color: #3b5ccc; font-weight: 800; margin-bottom: 10px; }
+
+    /* Testimonials */
+    .testimonials { margin-top: 72px; }
+    .t-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+    .quote { background: var(--card); border: 1px solid #eef2ff; border-radius: 16px; padding: 20px; color: var(--muted); box-shadow: 0 10px 30px rgba(2,6,23,.05); }
+    .quote strong { display: block; color: var(--text); margin-top: 8px; }
+
+    /* CTA Banner */
+    .cta-banner { margin-top: 72px; border-radius: 16px; padding: 28px; background: linear-gradient(135deg, rgba(59,130,246,.12), rgba(255,107,107,.12)); border: 1px solid #e7edff; display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+    .cta-banner p { color: var(--muted); }
+
+    /* Footer */
+    footer { margin-top: 72px; padding: 24px 0; color: var(--muted); border-top: 1px solid #eef2ff; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px; }
+    footer a { color: var(--muted); text-decoration: none; margin-right: 12px; }
+
     @media (max-width: 920px) {
       .hero { grid-template-columns: 1fr; }
       .grid { grid-template-columns: 1fr; }
+      .stats-grid { grid-template-columns: 1fr 1fr; }
+      .steps { grid-template-columns: 1fr; }
+      .t-grid { grid-template-columns: 1fr; }
+      .cta-banner { flex-direction: column; align-items: flex-start; }
     }
   </style>
   <script>
@@ -195,6 +227,63 @@
         </div>
       </div>
     </section>
+
+    <section class="stats">
+      <div class="stats-grid">
+        <div class="stat"><div class="num">10k+</div><div class="label">Questions answered</div></div>
+        <div class="stat"><div class="num">95%</div><div class="label">User satisfaction</div></div>
+        <div class="stat"><div class="num">24/7</div><div class="label">Private availability</div></div>
+        <div class="stat"><div class="num">0</div><div class="label">Tracking cookies</div></div>
+      </div>
+    </section>
+
+    <section class="how">
+      <div class="steps">
+        <div class="step">
+          <div class="n">1</div>
+          <h3>Ask anything</h3>
+          <p class="subtitle">Speak or type your question—no login required.</p>
+        </div>
+        <div class="step">
+          <div class="n">2</div>
+          <h3>Get clear guidance</h3>
+          <p class="subtitle">Evidence-informed, age-appropriate tips tailored to you.</p>
+        </div>
+        <div class="step">
+          <div class="n">3</div>
+          <h3>Take action</h3>
+          <p class="subtitle">Save insights, revisit history, and keep building confidence.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="testimonials">
+      <div class="t-grid">
+        <div class="quote">“SERA helped me plan a respectful conversation. I felt heard and prepared.”<strong>University student</strong></div>
+        <div class="quote">“I love the calm tone and the privacy-first design.”<strong>High school teacher</strong></div>
+        <div class="quote">“Fast, thoughtful, and judgment-free. Exactly what I needed.”<strong>New parent</strong></div>
+      </div>
+    </section>
+
+    <div class="cta-banner">
+      <div>
+        <h3 style="margin:0 0 6px 0;">Ready to try SERA?</h3>
+        <p>Private, free to start, and available whenever you are.</p>
+      </div>
+      <div>
+        <button class="btn primary" onclick="go('/chat')">Open the chat</button>
+        <button class="btn ghost" onclick="go('/about')">Learn more</button>
+      </div>
+    </div>
+
+    <footer>
+      <div class="brand">S<span>ERA</span></div>
+      <div>
+        <a href="/about">About</a>
+        <a href="/history">History</a>
+        <a href="/chat">Chat</a>
+      </div>
+    </footer>
   </div>
 </body>
 </html>

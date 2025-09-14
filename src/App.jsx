@@ -3,8 +3,10 @@ import { Outlet, Link, useLocation } from 'react-router-dom';
 
 export default function App() {
   const location = useLocation();
+  const isHome = location.pathname === '/';
   return (
     <div className="app-container" style={{ display: 'flex', minHeight: '100vh' }}>
+      {!isHome && (
       <aside className="sidebar" style={{ width: 240, background: '#fff', padding: 24, display: 'flex', flexDirection: 'column', justifyContent: 'space-between', borderRight: '1px solid #eee' }}>
         <div>
           <h2 style={{ color: '#ff6b6b' }}>SERA</h2>
@@ -19,7 +21,8 @@ export default function App() {
           <Link to="/">Logout</Link>
         </div>
       </aside>
-      <main className="main-panel" style={{ flex: 1, padding: '48px 64px' }}>
+      )}
+      <main className="main-panel" style={{ flex: 1, padding: isHome ? '0' : '48px 64px' }}>
         <Outlet key={location.pathname} />
       </main>
     </div>
