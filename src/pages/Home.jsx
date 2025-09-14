@@ -139,6 +139,7 @@ export default function Home() {
 }
 
 const css = `
+html, body, #root { margin: 0; padding: 0; }
 .home-landing {
   --bg: #f7f8ff;
   --text: #0f172a;
@@ -152,7 +153,7 @@ const css = `
               radial-gradient(900px 600px at -10% 20%, #ffe9ef 0%, transparent 60%),
               linear-gradient(180deg, #fbfaff 0%, #f7f8ff 100%);
 }
-.home-landing .container { max-width: 1100px; margin: 0 auto; padding: 24px; }
+.home-landing .container { width: 100%; max-width: 1200px; margin: 0 auto; padding: 24px clamp(16px, 5vw, 40px); }
 .home-landing .nav { display: flex; align-items: center; justify-content: space-between; }
 .home-landing .brand { font-weight: 800; letter-spacing: .2px; font-size: 20px; }
 .home-landing .brand span { color: var(--accent); }
