@@ -9,6 +9,10 @@ export default function Chat() {
   const startBtnRef = useRef(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [isTypingStopped, setIsTypingStopped] = useState(false);
+  const isTypingStoppedRef = useRef(false);
+  const typingIntervalRef = useRef(null);
+  const abortControllerRef = useRef(null);
+
   const [messages, setMessages] = useState([]);
   const [text, setText] = useState("");
   const [listeningStatus, setListeningStatus] = useState("");
@@ -19,6 +23,8 @@ export default function Chat() {
     // eslint-disable-next-line no-console
     console.log('[SERA] Using API_BASE:', API_BASE);
   }, []);
+
+  useEffect(() => { isTypingStoppedRef.current = isTypingStopped; }, [isTypingStopped]);
 
   const onboardingDone = typeof window !== 'undefined' && localStorage.getItem('sera.onboardingComplete') === '1';
   if (!onboardingDone) {
@@ -64,14 +70,21 @@ export default function Chat() {
   }
 
   async function getAIResponse(input) {
+    // Abort any in-flight request
+    if (abortControllerRef.current) abortControllerRef.current.abort();
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
+
     let res;
     try {
       res = await fetch(`${API_BASE}/ask`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userMessage: input })
+        body: JSON.stringify({ userMessage: input }),
+        signal: controller.signal,
       });
     } catch (networkErr) {
+      if (controller.signal.aborted) throw new Error('Request cancelled');
       // eslint-disable-next-line no-console
       console.error('[SERA] Network error calling /ask:', networkErr);
       throw new Error('Network error (check CORS, server running, or URL)');
@@ -107,9 +120,17 @@ export default function Chat() {
     return reply;
   }
 
+  function clearTypingInterval() {
+    if (typingIntervalRef.current) {
+      clearInterval(typingIntervalRef.current);
+      typingIntervalRef.current = null;
+    }
+  }
+
   function sendToBot(content) {
     appendMessage("You", content);
     setIsTypingStopped(false);
+    clearTypingInterval();
     setIsProcessing(true);
     getAIResponse(content)
       .then(reply => {
@@ -117,7 +138,7 @@ export default function Chat() {
         typeBotReply(reply);
       })
       .catch((err) => {
-        // Show actionable error in UI during dev
+        if (err.message === 'Request cancelled') return; // user stopped
         appendMessage("SERA", `Something went wrong: ${err.message}`);
       })
       .finally(() => {
@@ -127,19 +148,36 @@ export default function Chat() {
   }
 
   function typeBotReply(text) {
+    clearTypingInterval();
+    // Add placeholder first
+    setMessages(prev => [...prev, { sender: 'SERA', content: '' }]);
+
     let index = 0;
-    const interval = setInterval(() => {
-      if (isTypingStopped) {
-        clearInterval(interval);
+    typingIntervalRef.current = setInterval(() => {
+      if (isTypingStoppedRef.current) {
+        clearTypingInterval();
         return;
       }
-      const partial = text.slice(0, index++);
-      setMessages(prev => [...prev.filter((_, i) => i !== prev.length - 1), { sender: 'SERA', content: partial }]);
-      if (index === 1) {
-        setMessages(prev => [...prev, { sender: 'SERA', content: '' }]);
-      }
-      if (index > text.length) clearInterval(interval);
+      index += 1;
+      const partial = text.slice(0, index);
+      setMessages(prev => {
+        if (prev.length === 0) return prev;
+        const updated = prev.slice();
+        const lastIdx = updated.length - 1;
+        updated[lastIdx] = { sender: 'SERA', content: partial };
+        return updated;
+      });
+      if (index >= text.length) clearTypingInterval();
     }, 35);
+  }
+
+  function stopAll() {
+    setIsTypingStopped(true);
+    speechSynthesis.cancel();
+    clearTypingInterval();
+    if (abortControllerRef.current) abortControllerRef.current.abort();
+    if (recognition) recognition.stop();
+    setListeningStatus('Typing or voice interrupted.');
   }
 
   return (
@@ -162,7 +200,7 @@ export default function Chat() {
       <div className="flex items-center bg-white rounded-full p-2 shadow-[0_10px_30px_rgba(2,6,23,.06)]">
         <input value={text} onChange={e => setText(e.target.value)} placeholder="Ask anything" className="flex-1 border-0 outline-none text-[16px] px-4 py-2 rounded-full" />
         <button ref={startBtnRef} onClick={() => { if (!recognition || isProcessing) return; recognition.start(); setListeningStatus('Recording...'); if (startBtnRef.current) startBtnRef.current.disabled = true; }} className="border-0 bg-transparent cursor-pointer ml-2 text-[18px]">🎙️</button>
-        <button onClick={() => { if (recognition) recognition.stop(); setIsTypingStopped(true); speechSynthesis.cancel(); setListeningStatus('Typing or voice interrupted.'); }} className="border-0 bg-transparent cursor-pointer ml-2 text-[18px]">⏹️</button>
+        <button onClick={stopAll} className="border-0 bg-transparent cursor-pointer ml-2 text-[18px]">⏹️</button>
         <button onClick={() => { if (text.trim()) { sendToBot(text.trim()); setText(''); } }} className="ml-2 btn-gradient rounded-full">➤</button>
       </div>
     </div>
