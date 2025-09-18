@@ -128,6 +128,9 @@ export default function Chat() {
   }
 
   function sendToBot(content) {
+    // Clear any previous interruption/status message when sending anew
+    setListeningStatus('');
+
     appendMessage("You", content);
     setIsTypingStopped(false);
     clearTypingInterval();
