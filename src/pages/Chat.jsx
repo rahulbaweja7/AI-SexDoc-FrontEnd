@@ -1,7 +1,9 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Navigate } from 'react-router-dom';
 
-const API_BASE = "https://ai-sexdoc-backend.onrender.com";
+const isLocal = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+const isStaticServer = typeof window !== 'undefined' && window.location.port === '5500';
+const API_BASE = isLocal && isStaticServer ? '/api' : (isLocal ? 'http://localhost:3001' : 'https://ai-sexdoc-backend.onrender.com');
 
 export default function Chat() {
   const startBtnRef = useRef(null);
@@ -11,6 +13,12 @@ export default function Chat() {
   const [text, setText] = useState("");
   const [listeningStatus, setListeningStatus] = useState("");
   const preferredVoice = usePreferredVoice();
+
+  useEffect(() => {
+    // Dev visibility for endpoint selection
+    // eslint-disable-next-line no-console
+    console.log('[SERA] Using API_BASE:', API_BASE);
+  }, []);
 
   const onboardingDone = typeof window !== 'undefined' && localStorage.getItem('sera.onboardingComplete') === '1';
   if (!onboardingDone) {
@@ -56,13 +64,47 @@ export default function Chat() {
   }
 
   async function getAIResponse(input) {
-    const res = await fetch(`${API_BASE}/ask`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ userMessage: input })
-    });
-    const data = await res.json();
-    return data.reply || "Sorry, I couldn't get a response.";
+    let res;
+    try {
+      res = await fetch(`${API_BASE}/ask`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userMessage: input })
+      });
+    } catch (networkErr) {
+      // eslint-disable-next-line no-console
+      console.error('[SERA] Network error calling /ask:', networkErr);
+      throw new Error('Network error (check CORS, server running, or URL)');
+    }
+
+    let raw = '';
+    try {
+      raw = await res.text();
+    } catch (readErr) {
+      // ignore; fall through
+    }
+
+    // Try to parse JSON if present
+    let data = null;
+    try {
+      data = raw ? JSON.parse(raw) : null;
+    } catch (_) {
+      // non-JSON, keep raw body
+    }
+
+    if (!res.ok) {
+      // eslint-disable-next-line no-console
+      console.error('[SERA] /ask failed', res.status, raw);
+      throw new Error(`HTTP ${res.status}${raw ? `: ${raw.slice(0, 200)}` : ''}`);
+    }
+
+    const reply = data?.reply || data?.message || '';
+    if (!reply) {
+      // eslint-disable-next-line no-console
+      console.error('[SERA] Missing reply in response body:', data ?? raw);
+      throw new Error('Empty response from server');
+    }
+    return reply;
   }
 
   function sendToBot(content) {
@@ -74,7 +116,10 @@ export default function Chat() {
         playVoice(reply);
         typeBotReply(reply);
       })
-      .catch(() => appendMessage("SERA", "Something went wrong."))
+      .catch((err) => {
+        // Show actionable error in UI during dev
+        appendMessage("SERA", `Something went wrong: ${err.message}`);
+      })
       .finally(() => {
         setIsProcessing(false);
         if (startBtnRef.current) startBtnRef.current.disabled = false;
