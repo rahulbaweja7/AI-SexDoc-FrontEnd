@@ -204,14 +204,14 @@ export default function Chat() {
   }
 
   return (
-    <div className="max-w-[900px] mx-auto px-[clamp(16px,5vw,40px)] py-8">
-      <h1 className="text-3xl font-extrabold mb-2">Meet <span className="text-[#ff6b6b]">SERA</span> — your sexual education and relationship assistant</h1>
-      <p className="italic text-slate-700 mb-4">Talk away.</p>
+    <div className="max-w-[1200px] mx-auto px-[clamp(16px,5vw,40px)] py-2 md:py-4 h-[calc(100vh-100px)] flex flex-col">
+      <h1 className="text-3xl font-extrabold mb-1">Meet <span className="text-[#ff6b6b]">SERA</span> — your sexual education and relationship assistant</h1>
+      <p className="italic text-slate-700 mb-2">Talk away.</p>
 
-      <div ref={containerRef} className="h-[420px] overflow-y-auto p-4 bg-white rounded-2xl shadow-[0_10px_30px_rgba(2,6,23,.06)] mb-4 grid-lines">
+      <div ref={containerRef} className="flex-1 min-h-0 overflow-y-auto p-4 bg-white rounded-2xl shadow-[0_10px_30px_rgba(2,6,23,.06)] mb-3 grid-lines">
         {messages.map((m, idx) => (
           <div key={idx} className={`mb-3 flex ${m.sender === 'You' ? 'justify-end' : 'justify-start'}`}>
-            <div className={`${m.sender === 'You' ? 'bg-indigo-600 text-white' : 'bg-slate-100 text-slate-900'} max-w-[75%] px-4 py-2 rounded-2xl ${m.sender === 'You' ? 'rounded-br-sm' : 'rounded-bl-sm'} shadow-sm`}>
+            <div className={`${m.sender === 'You' ? 'bg-indigo-600 text-white' : 'bg-slate-100 text-slate-900'} max-w-[80%] px-4 py-2 rounded-2xl ${m.sender === 'You' ? 'rounded-br-sm' : 'rounded-bl-sm'} shadow-sm`}>
               <div className="text-sm opacity-80 mb-0.5 font-semibold">{m.sender}</div>
               <div>{m.content}</div>
             </div>
