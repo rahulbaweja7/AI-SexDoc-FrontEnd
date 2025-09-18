@@ -6,6 +6,7 @@ import Home from './pages/Home.jsx';
 import Chat from './pages/Chat.jsx';
 import About from './pages/About.jsx';
 import History from './pages/History.jsx';
+import './index.css';
 
 createRoot(document.getElementById('root')).render(
   <React.StrictMode>

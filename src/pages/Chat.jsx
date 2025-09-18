@@ -92,24 +92,24 @@ export default function Chat() {
   }
 
   return (
-    <div className="chat-section" style={{ maxWidth: 700, margin: '0 auto' }}>
-      <h1 style={{ fontSize: '2.2rem', fontWeight: 700, marginBottom: 8 }}>Meet <span style={{ color: '#ff6b6b' }}>SERA</span> — your sexual education and relationship assistant</h1>
-      <p style={{ fontStyle: 'italic', color: '#444', marginBottom: 16 }}>Talk away.</p>
+    <div className="max-w-[700px] mx-auto">
+      <h1 className="text-3xl font-extrabold mb-2">Meet <span className="text-[#ff6b6b]">SERA</span> — your sexual education and relationship assistant</h1>
+      <p className="italic text-slate-700 mb-4">Talk away.</p>
 
-      <div style={{ maxHeight: 400, overflowY: 'auto', padding: 16, background: '#fff', borderRadius: 12, boxShadow: '0 0 10px rgba(0,0,0,0.1)', marginBottom: 12 }}>
+      <div className="max-h-[400px] overflow-y-auto p-4 bg-white rounded-xl shadow-[0_0_10px_rgba(0,0,0,0.1)] mb-3">
         {messages.map((m, idx) => (
-          <div key={idx} style={{ marginBottom: 8, padding: '10px 12px', borderRadius: 10, background: m.sender === 'You' ? '#e0f0ff' : '#fce4ec' }}>
+          <div key={idx} className={`mb-2 px-3 py-2 rounded-lg ${m.sender === 'You' ? 'bg-sky-100' : 'bg-pink-100'}`}>
             <strong>{m.sender}:</strong> {m.content}
           </div>
         ))}
       </div>
-      <p style={{ fontStyle: 'italic', marginBottom: 8 }}>{listeningStatus}</p>
+      <p className="italic mb-2">{listeningStatus}</p>
 
-      <div style={{ display: 'flex', alignItems: 'center', background: '#fff', borderRadius: 999, padding: '8px 12px', boxShadow: '0 4px 10px rgba(0,0,0,0.1)' }}>
-        <input value={text} onChange={e => setText(e.target.value)} placeholder="Ask anything" style={{ flex: 1, border: 'none', outline: 'none', fontSize: 16, padding: '8px 12px' }} />
-        <button ref={startBtnRef} onClick={() => { if (!recognition || isProcessing) return; recognition.start(); setListeningStatus('Recording...'); if (startBtnRef.current) startBtnRef.current.disabled = true; }} style={btnIcon}>🎙️</button>
-        <button onClick={() => { if (recognition) recognition.stop(); setIsTypingStopped(true); speechSynthesis.cancel(); setListeningStatus('Typing or voice interrupted.'); }} style={btnIcon}>⏹️</button>
-        <button onClick={() => { if (text.trim()) { sendToBot(text.trim()); setText(''); } }} style={{ ...btnIcon, background: '#3b82f6', color: '#fff', borderRadius: 999 }}>➤</button>
+      <div className="flex items-center bg-white rounded-full p-2 shadow-[0_4px_10px_rgba(0,0,0,0.1)]">
+        <input value={text} onChange={e => setText(e.target.value)} placeholder="Ask anything" className="flex-1 border-0 outline-none text-[16px] px-3 py-2 rounded-full" />
+        <button ref={startBtnRef} onClick={() => { if (!recognition || isProcessing) return; recognition.start(); setListeningStatus('Recording...'); if (startBtnRef.current) startBtnRef.current.disabled = true; }} className="border-0 bg-transparent cursor-pointer ml-2 text-[18px]">🎙️</button>
+        <button onClick={() => { if (recognition) recognition.stop(); setIsTypingStopped(true); speechSynthesis.cancel(); setListeningStatus('Typing or voice interrupted.'); }} className="border-0 bg-transparent cursor-pointer ml-2 text-[18px]">⏹️</button>
+        <button onClick={() => { if (text.trim()) { sendToBot(text.trim()); setText(''); } }} className="ml-2 btn-primary rounded-full">➤</button>
       </div>
     </div>
   );

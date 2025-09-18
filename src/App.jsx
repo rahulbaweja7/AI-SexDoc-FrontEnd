@@ -1,28 +1,14 @@
 import React from 'react';
 import { Outlet, Link, useLocation } from 'react-router-dom';
+import NavBar from './components/NavBar.jsx';
 
 export default function App() {
   const location = useLocation();
   const isHome = location.pathname === '/';
   return (
-    <div className="app-container" style={{ display: 'flex', minHeight: '100vh' }}>
-      {!isHome && (
-      <aside className="sidebar" style={{ width: 240, background: '#fff', padding: 24, display: 'flex', flexDirection: 'column', justifyContent: 'space-between', borderRight: '1px solid #eee' }}>
-        <div>
-          <h2 style={{ color: '#ff6b6b' }}>SERA</h2>
-          <nav style={{ display: 'grid', gap: 8 }}>
-            <NavLink to="/">Home</NavLink>
-            <NavLink to="/history">History</NavLink>
-            <NavLink to="/about">About</NavLink>
-          </nav>
-        </div>
-        <div className="bottom-options" style={{ display: 'grid', gap: 8 }}>
-          <a href="#">Settings</a>
-          <Link to="/">Logout</Link>
-        </div>
-      </aside>
-      )}
-      <main className="main-panel" style={{ flex: 1, padding: isHome ? '0' : '48px 64px' }}>
+    <div className="min-h-screen">
+      <NavBar />
+      <main className={`${isHome ? 'p-0' : 'py-8 px-[clamp(16px,5vw,40px)]'}`}>
         <Outlet key={location.pathname} />
       </main>
     </div>
@@ -31,7 +17,7 @@ export default function App() {
 
 function NavLink({ to, children }) {
   return (
-    <Link to={to} style={{ textDecoration: 'none', color: '#555' }}>{children}</Link>
+    <Link to={to} className="no-underline text-slate-600">{children}</Link>
   );
 }
 

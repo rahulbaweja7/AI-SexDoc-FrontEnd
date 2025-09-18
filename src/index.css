@@ -1,0 +1,21 @@
+@import "tailwindcss";
+
+@source "./index.html";
+@source "./src/**/*.{js,jsx,ts,tsx}";
+
+@layer base {
+  :root {
+    --bg: #f7f8ff;
+    --text: #0f172a;
+    --muted: #475569;
+    --primary: #3b82f6;
+    --accent: #ff6b6b;
+    --card: #ffffff;
+  }
+  html, body, #root { height: 100%; }
+}
+
+@layer components {
+  .btn-primary { @apply inline-flex items-center justify-center font-bold px-4 py-2 rounded-xl text-white bg-blue-500 shadow-lg hover:opacity-95 active:translate-y-px transition; }
+  .btn-ghost { @apply inline-flex items-center justify-center font-bold px-4 py-2 rounded-xl border border-slate-200 bg-white text-slate-800 hover:bg-slate-50 active:translate-y-px transition; }
+}
