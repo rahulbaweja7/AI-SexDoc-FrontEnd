@@ -6,6 +6,7 @@ import Home from './pages/Home.jsx';
 import Chat from './pages/Chat.jsx';
 import About from './pages/About.jsx';
 import History from './pages/History.jsx';
+import Onboarding from './pages/Onboarding.jsx';
 import './index.css';
 
 createRoot(document.getElementById('root')).render(
@@ -17,6 +18,7 @@ createRoot(document.getElementById('root')).render(
           <Route path="chat" element={<Chat />} />
           <Route path="about" element={<About />} />
           <Route path="history" element={<History />} />
+          <Route path="onboarding" element={<Onboarding />} />
         </Route>
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>

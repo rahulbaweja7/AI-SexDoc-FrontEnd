@@ -12,10 +12,25 @@
     --accent: #ff6b6b;
     --card: #ffffff;
   }
+  .dark {
+    color-scheme: dark;
+  }
   html, body, #root { height: 100%; }
 }
 
 @layer components {
   .btn-primary { @apply inline-flex items-center justify-center font-bold px-4 py-2 rounded-xl text-white bg-blue-500 shadow-lg hover:opacity-95 active:translate-y-px transition; }
   .btn-ghost { @apply inline-flex items-center justify-center font-bold px-4 py-2 rounded-xl border border-slate-200 bg-white text-slate-800 hover:bg-slate-50 active:translate-y-px transition; }
+  .btn-gradient { @apply inline-flex items-center justify-center font-semibold px-4 py-2 rounded-full text-white bg-gradient-to-r from-indigo-500 via-fuchsia-500 to-rose-500 shadow-lg hover:brightness-110 active:translate-y-px transition; }
+  .card-glass { @apply bg-white/80 dark:bg-slate-900/60 border border-white/60 dark:border-white/10 rounded-2xl shadow-[0_10px_30px_rgba(2,6,23,.08)] backdrop-blur; }
+  .card-elevated { @apply bg-white border border-slate-200 rounded-2xl shadow-[0_10px_30px_rgba(2,6,23,.06)]; }
+}
+
+@layer utilities {
+  .bg-aurora { background-image: radial-gradient(1200px_600px_at_80%_-10%,#e7f0ff_0%,transparent_60%), radial-gradient(900px_600px_at_-10%_20%,#ffe9ef_0%,transparent_60%), linear-gradient(180deg,#fbfaff_0%,#f7f8ff_100%); }
+  .grid-lines { background-image: linear-gradient(to_right,rgba(99,102,241,0.06)_1px,transparent_1px), linear-gradient(to_bottom,rgba(99,102,241,0.06)_1px,transparent_1px); background-size: 24px_24px; }
+  .text-gradient { @apply bg-gradient-to-r from-indigo-600 via-fuchsia-600 to-rose-600 bg-clip-text text-transparent; }
+  .shadow-glow { box-shadow: 0 10px 30px rgba(59,130,246,.25); }
+  @keyframes float { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-6px)} }
+  .animate-float { animation: float 6s ease-in-out infinite; }
 }
