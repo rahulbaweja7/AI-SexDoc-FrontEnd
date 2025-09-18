@@ -12,6 +12,8 @@ export default function Chat() {
   const isTypingStoppedRef = useRef(false);
   const typingIntervalRef = useRef(null);
   const abortControllerRef = useRef(null);
+  const isComposingRef = useRef(false);
+  const containerRef = useRef(null);
 
   const [messages, setMessages] = useState([]);
   const [text, setText] = useState("");
@@ -25,6 +27,13 @@ export default function Chat() {
   }, []);
 
   useEffect(() => { isTypingStoppedRef.current = isTypingStopped; }, [isTypingStopped]);
+
+  // Auto-scroll to bottom whenever messages change
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+    el.scrollTop = el.scrollHeight;
+  }, [messages]);
 
   const onboardingDone = typeof window !== 'undefined' && localStorage.getItem('sera.onboardingComplete') === '1';
   if (!onboardingDone) {
@@ -183,12 +192,23 @@ export default function Chat() {
     setListeningStatus('Typing or voice interrupted.');
   }
 
+  function handleKeyDown(e) {
+    if (e.key === 'Enter' && !e.shiftKey && !isComposingRef.current) {
+      e.preventDefault();
+      const value = text.trim();
+      if (value) {
+        sendToBot(value);
+        setText('');
+      }
+    }
+  }
+
   return (
     <div className="max-w-[900px] mx-auto px-[clamp(16px,5vw,40px)] py-8">
       <h1 className="text-3xl font-extrabold mb-2">Meet <span className="text-[#ff6b6b]">SERA</span> — your sexual education and relationship assistant</h1>
       <p className="italic text-slate-700 mb-4">Talk away.</p>
 
-      <div className="h-[420px] overflow-y-auto p-4 bg-white rounded-2xl shadow-[0_10px_30px_rgba(2,6,23,.06)] mb-4 grid-lines">
+      <div ref={containerRef} className="h-[420px] overflow-y-auto p-4 bg-white rounded-2xl shadow-[0_10px_30px_rgba(2,6,23,.06)] mb-4 grid-lines">
         {messages.map((m, idx) => (
           <div key={idx} className={`mb-3 flex ${m.sender === 'You' ? 'justify-end' : 'justify-start'}`}>
             <div className={`${m.sender === 'You' ? 'bg-indigo-600 text-white' : 'bg-slate-100 text-slate-900'} max-w-[75%] px-4 py-2 rounded-2xl ${m.sender === 'You' ? 'rounded-br-sm' : 'rounded-bl-sm'} shadow-sm`}>
@@ -201,7 +221,15 @@ export default function Chat() {
       <p className="italic mb-2">{listeningStatus}</p>
 
       <div className="flex items-center bg-white rounded-full p-2 shadow-[0_10px_30px_rgba(2,6,23,.06)]">
-        <input value={text} onChange={e => setText(e.target.value)} placeholder="Ask anything" className="flex-1 border-0 outline-none text-[16px] px-4 py-2 rounded-full" />
+        <input
+          value={text}
+          onChange={e => setText(e.target.value)}
+          onKeyDown={handleKeyDown}
+          onCompositionStart={() => { isComposingRef.current = true; }}
+          onCompositionEnd={() => { isComposingRef.current = false; }}
+          placeholder="Ask anything (Enter to send, Shift+Enter for newline)"
+          className="flex-1 border-0 outline-none text-[16px] px-4 py-2 rounded-full"
+        />
         <button ref={startBtnRef} onClick={() => { if (!recognition || isProcessing) return; recognition.start(); setListeningStatus('Recording...'); if (startBtnRef.current) startBtnRef.current.disabled = true; }} className="border-0 bg-transparent cursor-pointer ml-2 text-[18px]">🎙️</button>
         <button onClick={stopAll} className="border-0 bg-transparent cursor-pointer ml-2 text-[18px]">⏹️</button>
         <button onClick={() => { if (text.trim()) { sendToBot(text.trim()); setText(''); } }} className="ml-2 btn-gradient rounded-full">➤</button>
