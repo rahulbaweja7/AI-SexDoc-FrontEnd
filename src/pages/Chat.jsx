@@ -5,6 +5,32 @@ const isLocal = typeof window !== 'undefined' && (window.location.hostname === '
 const isStaticServer = typeof window !== 'undefined' && window.location.port === '5500';
 const API_BASE = isLocal && isStaticServer ? '/api' : (isLocal ? 'http://localhost:3001' : 'https://ai-sexdoc-backend.onrender.com');
 
+function IconMic({ className }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M12 14a4 4 0 0 0 4-4V7a4 4 0 1 0-8 0v3a4 4 0 0 0 4 4z"/>
+      <path d="M19 10a7 7 0 0 1-14 0"/>
+      <path d="M12 19v-3"/>
+    </svg>
+  );
+}
+
+function IconStop({ className }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <rect x="7" y="7" width="10" height="10" rx="2" ry="2" />
+    </svg>
+  );
+}
+
+function IconSend({ className }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+      <path d="M8 5v14l11-7-11-7z" />
+    </svg>
+  );
+}
+
 export default function Chat() {
   const startBtnRef = useRef(null);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -230,9 +256,31 @@ export default function Chat() {
           placeholder="Ask anything (Enter to send, Shift+Enter for newline)"
           className="flex-1 border-0 outline-none text-[16px] px-4 py-2 rounded-full"
         />
-        <button ref={startBtnRef} onClick={() => { if (!recognition || isProcessing) return; recognition.start(); setListeningStatus('Recording...'); if (startBtnRef.current) startBtnRef.current.disabled = true; }} className="border-0 bg-transparent cursor-pointer ml-2 text-[18px]">🎙️</button>
-        <button onClick={stopAll} className="border-0 bg-transparent cursor-pointer ml-2 text-[18px]">⏹️</button>
-        <button onClick={() => { if (text.trim()) { sendToBot(text.trim()); setText(''); } }} className="ml-2 btn-gradient rounded-full">➤</button>
+        <button
+          aria-label="Start voice input"
+          title="Start voice input"
+          ref={startBtnRef}
+          onClick={() => { if (!recognition || isProcessing) return; recognition.start(); setListeningStatus('Recording...'); if (startBtnRef.current) startBtnRef.current.disabled = true; }}
+          className="inline-flex items-center justify-center w-10 h-10 rounded-full text-slate-600 hover:bg-slate-100 ml-2"
+        >
+          <IconMic className="w-5 h-5" />
+        </button>
+        <button
+          aria-label="Stop"
+          title="Stop"
+          onClick={stopAll}
+          className="inline-flex items-center justify-center w-10 h-10 rounded-full text-slate-600 hover:bg-slate-100 ml-2"
+        >
+          <IconStop className="w-5 h-5" />
+        </button>
+        <button
+          aria-label="Send"
+          title="Send"
+          onClick={() => { if (text.trim()) { sendToBot(text.trim()); setText(''); } }}
+          className="ml-2 btn-gradient rounded-full w-12 h-12 inline-flex items-center justify-center"
+        >
+          <IconSend className="w-5 h-5 text-white" />
+        </button>
       </div>
     </div>
   );
