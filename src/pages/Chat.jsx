@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext.jsx';
-import { createSession, getSession, addMessageToSession, getAllSessions } from '../utils/sessions.js';
+import { createSession, getSession, addMessageToSession, getAllSessions, renameSession, deleteSession } from '../utils/sessions.js';
 
 const isLocal = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
 const isStaticServer = typeof window !== 'undefined' && window.location.port === '5500';
@@ -41,6 +41,32 @@ function IconMenu({ className }) {
   );
 }
 
+function IconChevronLeft({ className }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M15 18l-6-6 6-6" />
+    </svg>
+  );
+}
+
+function IconChevronRight({ className }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M9 6l6 6-6 6" />
+    </svg>
+  );
+}
+
+function IconKebab({ className }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+      <circle cx="12" cy="5" r="1.8" />
+      <circle cx="12" cy="12" r="1.8" />
+      <circle cx="12" cy="19" r="1.8" />
+    </svg>
+  );
+}
+
 export default function Chat() {
   const { token } = useAuth();
   const location = useLocation();
@@ -63,22 +89,20 @@ export default function Chat() {
   const [text, setText] = useState("");
   const [listeningStatus, setListeningStatus] = useState("");
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false); // desktop collapse
   const [sessionList, setSessionList] = useState(() => getAllSessions());
   const preferredVoice = usePreferredVoice();
+  const [menuSessionId, setMenuSessionId] = useState('');
 
   useEffect(() => { console.log('[SERA] Using API_BASE:', API_BASE); }, []); // eslint-disable-line
   useEffect(() => { isTypingStoppedRef.current = isTypingStopped; }, [isTypingStopped]);
 
-  useEffect(() => {
-    const el = containerRef.current; if (!el) return; el.scrollTop = el.scrollHeight;
-  }, [messages]);
+  useEffect(() => { const el = containerRef.current; if (!el) return; el.scrollTop = el.scrollHeight; }, [messages]);
 
   const onboardingDone = typeof window !== 'undefined' && localStorage.getItem('sera.onboardingComplete') === '1';
   if (!onboardingDone) return <Navigate to="/onboarding" replace />;
 
-  const recognition = useMemo(() => {
-    const SR = window.SpeechRecognition || window.webkitSpeechRecognition; if (!SR) return null; const r = new SR(); r.lang = 'en-US'; r.interimResults = true; return r;
-  }, []);
+  const recognition = useMemo(() => { const SR = window.SpeechRecognition || window.webkitSpeechRecognition; if (!SR) return null; const r = new SR(); r.lang = 'en-US'; r.interimResults = true; return r; }, []);
 
   useEffect(() => {
     if (!recognition) return; let userSpeech = "";
@@ -86,13 +110,15 @@ export default function Chat() {
     recognition.onend = () => { if (userSpeech) { sendToBot(userSpeech); } else { setListeningStatus("No speech detected."); if (startBtnRef.current) startBtnRef.current.disabled = false; } };
   }, [recognition]);
 
-  useEffect(() => {
-    if (!sessionId) return; const s = getSession(sessionId);
-    if (s && s.messages.length) { setMessages(s.messages); greetedRef.current = true; }
-  }, [sessionId]);
+  useEffect(() => { if (!sessionId) return; const s = getSession(sessionId); if (s && s.messages.length) { setMessages(s.messages); greetedRef.current = true; } }, [sessionId]);
 
   function refreshSessions() { setSessionList(getAllSessions()); }
   useEffect(() => { refreshSessions(); }, []);
+  useEffect(() => {
+    function closeMenus() { setMenuSessionId(''); }
+    window.addEventListener('click', closeMenus);
+    return () => window.removeEventListener('click', closeMenus);
+  }, []);
 
   useEffect(() => { if (greetedRef.current) return; greetedRef.current = true; setMessages(prev => prev.length === 0 ? [{ sender: 'SERA', content: "Hi, I’m SERA. I’m here for you—ask anything, or tap the mic to speak." }] : prev); }, []);
 
@@ -141,25 +167,62 @@ export default function Chat() {
   function handleKeyDown(e) { if (e.key === 'Enter' && !e.shiftKey && !isComposingRef.current) { e.preventDefault(); const value = text.trim(); if (value) { sendToBot(value); setText(''); } } }
 
   return (
-    <div className="relative h-screen md:pl-72">
-      {/* Pinned sidebar on md+ (full height, pleasant gradient) */}
-      <div className="hidden md:block fixed z-40 left-0 top-0 bottom-0 w-72 bg-white dark:bg-slate-800/90 backdrop-blur-md border-r border-slate-200 dark:border-slate-700">
+    <div className={`relative h-screen ${sidebarCollapsed ? 'md:pl-20' : 'md:pl-72'}`}>
+      {/* Pinned sidebar on md+ with collapse toggle */}
+      <div className={`hidden md:block fixed z-40 left-0 top-0 bottom-0 ${sidebarCollapsed ? 'w-16' : 'w-72'} bg-white dark:bg-slate-800/90 backdrop-blur-md border-r border-slate-200 dark:border-slate-700`}>
         <div className="p-3 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between">
-          <div className="font-bold text-slate-800 dark:text-slate-100">Conversations</div>
-          <button onClick={newChat} className="px-3 py-1.5 rounded-md border border-slate-200 bg-white dark:bg-slate-700/60 text-slate-800 dark:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-700">+ New</button>
-        </div>
-        <div className="p-3 space-y-2 overflow-y-auto max-h-[calc(100vh-56px)] pr-1">
-          {sessionList.map(s => (
-            <button key={s.id} onClick={() => openSession(s.id)} className={`w-full text-left p-3 rounded-lg text-slate-800 dark:text-slate-100 ${sessionId===s.id ? 'bg-slate-100 dark:bg-slate-700/60' : 'hover:bg-slate-100 dark:hover:bg-slate-700/60'}`}>
-              <div className="font-semibold truncate">{s.title || 'Untitled chat'}</div>
-              <div className="text-xs text-slate-500 truncate">{new Date(s.updatedAt || s.createdAt).toLocaleString()}</div>
+          {!sidebarCollapsed && <div className="font-bold text-slate-800 dark:text-slate-100">Conversations</div>}
+          <div className="flex items-center gap-2">
+            {!sidebarCollapsed ? (
+              <button onClick={newChat} className="px-3 py-1.5 rounded-md border border-slate-200 bg-white dark:bg-slate-700/60 text-slate-800 dark:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-700">+ New</button>
+            ) : (
+              <button onClick={newChat} className="w-8 h-8 inline-flex items-center justify-center rounded-md border border-slate-200 bg-white dark:bg-slate-700/60 text-slate-800 dark:text-slate-100">+</button>
+            )}
+            <button onClick={() => setSidebarCollapsed(v => !v)} className="w-8 h-8 inline-flex items-center justify-center rounded-md border border-slate-200 bg-white dark:bg-slate-700/60 text-slate-800 dark:text-slate-100">
+              {sidebarCollapsed ? <IconChevronRight className="w-4 h-4"/> : <IconChevronLeft className="w-4 h-4"/>}
             </button>
+          </div>
+        </div>
+        <div className="p-2 space-y-2 overflow-y-auto max-h-[calc(100vh-56px)] pr-1">
+          {sessionList.map(s => (
+            sidebarCollapsed ? (
+              <div key={s.id} className={`group relative w-full`}>
+                <button onClick={() => openSession(s.id)} title={s.title || 'Untitled chat'} className={`w-full p-2 rounded-lg flex items-center justify-center text-slate-800 dark:text-slate-100 ${sessionId===s.id ? 'bg-slate-100 dark:bg-slate-700/60' : 'hover:bg-slate-100 dark:hover:bg-slate-700/60'}`}>
+                  <span className="w-2 h-2 rounded-full bg-slate-400"></span>
+                </button>
+                <button onClick={(e)=>{e.stopPropagation(); setMenuSessionId(prev => prev===s.id ? '' : s.id);}} aria-label="More" className="absolute right-1 top-1/2 -translate-y-1/2 w-6 h-6 rounded-md text-slate-500 dark:text-slate-200 hover:bg-slate-200/40 dark:hover:bg-white/10 flex items-center justify-center">
+                  <IconKebab className="w-4 h-4"/>
+                </button>
+                {menuSessionId===s.id && (
+                  <div onClick={e=>e.stopPropagation()} className="absolute z-50 right-2 top-8 w-40 rounded-lg border border-slate-200 bg-white dark:bg-slate-800 shadow-lg p-1">
+                    <button onClick={()=>{ const name=prompt('Rename chat', s.title||''); if(name!==null){ renameSession(s.id,name.trim()||'Untitled chat'); refreshSessions(); setMenuSessionId(''); } }} className="w-full text-left px-3 py-2 rounded-md hover:bg-slate-100 dark:hover:bg-slate-700">Rename</button>
+                    <button onClick={()=>{ if(confirm('Delete this chat?')){ deleteSession(s.id); refreshSessions(); setMenuSessionId(''); if(sessionId===s.id){ setSessionId(''); setMessages([]); } } }} className="w-full text-left px-3 py-2 rounded-md text-red-600 hover:bg-slate-100 dark:hover:bg-slate-700">Delete</button>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div key={s.id} className={`group relative w-full text-left p-3 rounded-lg text-slate-800 dark:text-slate-100 ${sessionId===s.id ? 'bg-slate-100 dark:bg-slate-700/60' : 'hover:bg-slate-100 dark:hover:bg-slate-700/60'}`}>
+                <button onClick={() => openSession(s.id)} className="block w-[calc(100%-36px)] text-left">
+                  <div className="font-semibold truncate">{s.title || 'Untitled chat'}</div>
+                  <div className="text-xs text-slate-500 truncate">{new Date(s.updatedAt || s.createdAt).toLocaleString()}</div>
+                </button>
+                <button onClick={(e)=>{e.stopPropagation(); setMenuSessionId(prev => prev===s.id ? '' : s.id);}} aria-label="More" className="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-md text-slate-500 dark:text-slate-200 hover:bg-slate-200/40 dark:hover:bg-white/10 flex items-center justify-center">
+                  <IconKebab className="w-4 h-4"/>
+                </button>
+                {menuSessionId===s.id && (
+                  <div onClick={e=>e.stopPropagation()} className="absolute z-50 right-2 top-10 w-44 rounded-lg border border-slate-200 bg-white dark:bg-slate-800 shadow-lg py-1">
+                    <button onClick={()=>{ const name=prompt('Rename chat', s.title||''); if(name!==null){ renameSession(s.id,name.trim()||'Untitled chat'); refreshSessions(); setMenuSessionId(''); } }} className="w-full text-left px-3 py-2 hover:bg-slate-100 dark:hover:bg-slate-700">Rename</button>
+                    <button onClick={()=>{ if(confirm('Delete this chat?')){ deleteSession(s.id); refreshSessions(); setMenuSessionId(''); if(sessionId===s.id){ setSessionId(''); setMessages([]); } } }} className="w-full text-left px-3 py-2 text-red-600 hover:bg-slate-100 dark:hover:bg-slate-700">Delete</button>
+                  </div>
+                )}
+              </div>
+            )
           ))}
           {sessionList.length === 0 && <div className="text-sm text-slate-500">No conversations yet.</div>}
         </div>
       </div>
 
-      {/* Mobile rail + drawer start at top */}
+      {/* Mobile rail + drawer */}
       <div className="md:hidden fixed left-0 top-0 bottom-0 w-12 z-30 flex flex-col items-center gap-3 pt-3 bg-transparent">
         <button onClick={() => { setSidebarOpen(true); refreshSessions(); }} className="w-10 h-10 inline-flex items-center justify-center rounded-lg border border-slate-200 bg-white shadow-sm"><IconMenu className="w-5 h-5"/></button>
       </div>
@@ -167,17 +230,28 @@ export default function Chat() {
       <div className={`${sidebarOpen ? 'translate-x-0' : '-translate-x-full'} md:hidden fixed z-40 left-0 top-0 bottom-0 w-72 bg-white dark:bg-slate-800/90 backdrop-blur-md border-r border-slate-200 dark:border-slate-700 transition-transform`}>
         <div className="p-3 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between">
           <div className="font-bold text-slate-800 dark:text-slate-100">Conversations</div>
-          <button onClick={() => setSidebarOpen(false)} className="px-2 py-1 rounded-md border border-slate-200 bg-white dark:bg-slate-700/60 text-slate-800 dark:text-slate-100">×</button>
+          <button onClick={() => setSidebarOpen(false)} className="w-8 h-8 inline-flex items-center justify-center rounded-md border border-slate-200 bg-white dark:bg-slate-700/60 text-slate-800 dark:text-slate-100">×</button>
         </div>
         <div className="p-3">
           <button onClick={newChat} className="w-full mb-3 inline-flex items-center justify-center px-3 py-2 rounded-xl border border-slate-200 bg-white dark:bg-slate-700/60 text-slate-800 dark:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-700">+ New chat</button>
           <div className="space-y-2 overflow-y-auto max-h-[calc(100vh-96px)] pr-1">
             {sessionList.map(s => (
-              <button key={s.id} onClick={() => openSession(s.id)} className={`w-full text-left p-3 rounded-lg text-slate-800 dark:text-slate-100 ${sessionId===s.id ? 'bg-slate-100 dark:bg-slate-700/60' : 'hover:bg-slate-100 dark:hover:bg-slate-700/60'}`}>
-                <div className="font-semibold truncate">{s.title || 'Untitled chat'}</div>
-                <div className="text-xs text-slate-500 truncate">{new Date(s.updatedAt || s.createdAt).toLocaleString()}</div>
-              </button>
-            ))}
+              <div key={s.id} className={`group relative w-full text-left p-3 rounded-lg text-slate-800 dark:text-slate-100 ${sessionId===s.id ? 'bg-slate-100 dark:bg-slate-700/60' : 'hover:bg-slate-100 dark:hover:bg-slate-700/60'}`}>
+                <button onClick={() => openSession(s.id)} className="block w-[calc(100%-36px)] text-left">
+                  <div className="font-semibold truncate">{s.title || 'Untitled chat'}</div>
+                  <div className="text-xs text-slate-500 truncate">{new Date(s.updatedAt || s.createdAt).toLocaleString()}</div>
+                </button>
+                <button onClick={(e)=>{e.stopPropagation(); setMenuSessionId(prev => prev===s.id ? '' : s.id);}} aria-label="More" className="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-md text-slate-500 dark:text-slate-200 hover:bg-slate-200/40 dark:hover:bg-white/10 flex items-center justify-center">
+                  <IconKebab className="w-4 h-4"/>
+                </button>
+                {menuSessionId===s.id && (
+                  <div onClick={e=>e.stopPropagation()} className="absolute z-50 right-2 top-10 w-44 rounded-lg border border-slate-200 bg-white dark:bg-slate-800 shadow-lg py-1">
+                    <button onClick={()=>{ const name=prompt('Rename chat', s.title||''); if(name!==null){ renameSession(s.id,name.trim()||'Untitled chat'); refreshSessions(); setMenuSessionId(''); } }} className="w-full text-left px-3 py-2 hover:bg-slate-100 dark:hover:bg-slate-700">Rename</button>
+                    <button onClick={()=>{ if(confirm('Delete this chat?')){ deleteSession(s.id); refreshSessions(); setMenuSessionId(''); if(sessionId===s.id){ setSessionId(''); setMessages([]); } } }} className="w-full text-left px-3 py-2 text-red-600 hover:bg-slate-100 dark:hover:bg-slate-700">Delete</button>
+                  </div>
+                )}
+          </div>
+        ))}
             {sessionList.length === 0 && <div className="text-sm text-slate-500">No conversations yet.</div>}
           </div>
         </div>
