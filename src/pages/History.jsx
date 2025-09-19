@@ -1,11 +1,13 @@
 import React, { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext.jsx';
+import { getAllSessions } from '../utils/sessions.js';
 
 const API_BASE = (typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')) ? '/api' : 'https://ai-sexdoc-backend.onrender.com';
 
 export default function History() {
   const { fetchWithAuth, isAuthenticated } = useAuth();
-  const [items, setItems] = useState([]);
+  const [sessions, setSessions] = useState([]);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
 
@@ -14,19 +16,12 @@ export default function History() {
     async function load() {
       setError(''); setLoading(true);
       try {
-        let list = [];
-        if (isAuthenticated) {
-          const res = await fetchWithAuth(`${API_BASE}/history`, { method: 'GET' });
-          const data = await res.json().catch(() => ([]));
-          if (!res.ok) throw new Error(data?.message || `HTTP ${res.status}`);
-          list = Array.isArray(data) ? data : (data?.items || []);
-        } else {
-          const raw = localStorage.getItem('sera.localHistory');
-          list = raw ? JSON.parse(raw) : [];
-        }
-        if (mounted) setItems(list);
+        // Local sessioned history
+        const local = getAllSessions();
+        // Optional: merge with remote list later
+        if (mounted) setSessions(local);
       } catch (e) {
-        if (mounted) setError(e.message || 'Failed to load history');
+        if (mounted) setError(e.message || 'Failed to load');
       } finally {
         if (mounted) setLoading(false);
       }
@@ -41,14 +36,22 @@ export default function History() {
       {loading && <p>Loading…</p>}
       {error && <p className="text-red-600">{error}</p>}
       <div className="space-y-3">
-        {items.map((it, i) => (
-          <div key={i} className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-4">
-            <div className="text-sm text-slate-500 mb-1">{new Date(it.timestamp || Date.now()).toLocaleString()}</div>
-            <div className="font-semibold">You: {it.userMessage}</div>
-            <div className="text-slate-700 dark:text-slate-300">SERA: {it.reply}</div>
-          </div>
+        {sessions.map(s => (
+          <Link key={s.id} to={`/chat?session=${encodeURIComponent(s.id)}`} className="block no-underline">
+            <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-4 hover:bg-slate-50 dark:hover:bg-slate-700">
+              <div className="flex items-center justify-between">
+                <div className="font-semibold text-slate-900 dark:text-white">{s.title || 'Untitled chat'}</div>
+                <div className="text-sm text-slate-500">{new Date(s.updatedAt || s.createdAt).toLocaleString()}</div>
+              </div>
+              <div className="text-slate-600 dark:text-slate-300 mt-1 line-clamp-2">
+                {s.messages?.slice(-2).map((m,i) => (
+                  <span key={i}>{m.sender}: {m.content}{i === 0 ? ' · ' : ''}</span>
+                ))}
+              </div>
+            </div>
+          </Link>
         ))}
-        {!loading && items.length === 0 && <p>No history yet.</p>}
+        {!loading && sessions.length === 0 && <p>No conversations yet.</p>}
       </div>
     </div>
   );

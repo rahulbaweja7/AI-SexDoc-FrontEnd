@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Navigate } from 'react-router-dom';
+import { Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext.jsx';
+import { createSession, getSession, addMessageToSession } from '../utils/sessions.js';
 
 const isLocal = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
 const isStaticServer = typeof window !== 'undefined' && window.location.port === '5500';
@@ -34,6 +35,11 @@ function IconSend({ className }) {
 
 export default function Chat() {
   const { token } = useAuth();
+  const location = useLocation();
+  const navigate = useNavigate();
+  const params = new URLSearchParams(location.search);
+  const initialSessionId = params.get('session') || '';
+  const [sessionId, setSessionId] = useState(initialSessionId);
   const startBtnRef = useRef(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [isTypingStopped, setIsTypingStopped] = useState(false);
@@ -62,6 +68,16 @@ export default function Chat() {
     if (!el) return;
     el.scrollTop = el.scrollHeight;
   }, [messages]);
+
+  // Load session messages if opening an existing session
+  useEffect(() => {
+    if (!sessionId) return;
+    const s = getSession(sessionId);
+    if (s && s.messages.length) {
+      setMessages(s.messages);
+      greetedRef.current = true;
+    }
+  }, [sessionId]);
 
   const onboardingDone = typeof window !== 'undefined' && localStorage.getItem('sera.onboardingComplete') === '1';
   if (!onboardingDone) {
@@ -183,13 +199,20 @@ export default function Chat() {
     clearTypingInterval();
     setIsProcessing(true);
     const startedAt = Date.now();
+    if (!sessionId) {
+      const s = createSession(text.slice(0, 60) || 'New chat');
+      setSessionId(s.id);
+      navigate(`/chat?session=${encodeURIComponent(s.id)}`);
+    }
+    // persist user message
+    if (sessionId) addMessageToSession(sessionId, { sender: 'You', content, timestamp: startedAt });
     getAIResponse(content)
       .then(reply => {
         playVoice(reply);
         typeBotReply(reply);
         const entry = { timestamp: startedAt, userMessage: content, reply };
         persistHistory(entry);
-        // Try to persist remotely
+        if (sessionId) addMessageToSession(sessionId, { sender: 'SERA', content: reply, timestamp: Date.now() });
         try {
           const headers = { 'Content-Type': 'application/json' };
           if (token) headers['Authorization'] = `Bearer ${token}`;
@@ -239,16 +262,17 @@ export default function Chat() {
   }
 
   function newChat() {
-    // Stop any ongoing activity
     setIsTypingStopped(true);
     speechSynthesis.cancel();
     clearTypingInterval();
     if (abortControllerRef.current) abortControllerRef.current.abort();
     if (recognition) recognition.stop();
-    // Reset UI
     setText('');
     setListeningStatus('');
-    greetedRef.current = true; // we will place greeting directly
+    const s = createSession('New chat');
+    setSessionId(s.id);
+    navigate(`/chat?session=${encodeURIComponent(s.id)}`);
+    greetedRef.current = true;
     setMessages([{ sender: 'SERA', content: "New chat started. How can I help?" }]);
   }
 
