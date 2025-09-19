@@ -4,8 +4,8 @@ import { useAuth } from '../context/AuthContext.jsx';
 import { createSession, getSession, addMessageToSession, getAllSessions, renameSession, deleteSession } from '../utils/sessions.js';
 
 const isLocal = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
-const isStaticServer = typeof window !== 'undefined' && window.location.port === '5500';
-const API_BASE = isLocal && isStaticServer ? '/api' : (isLocal ? 'http://localhost:3001' : 'https://ai-sexdoc-backend.onrender.com');
+const isDevProxy = typeof window !== 'undefined' && (window.location.port === '5500' || window.location.port === '5173');
+const API_BASE = isLocal && isDevProxy ? '/api' : (isLocal ? 'http://localhost:3001' : 'https://ai-sexdoc-backend.onrender.com');
 
 function IconMic({ className }) {
   return (
@@ -63,6 +63,24 @@ function IconKebab({ className }) {
       <circle cx="12" cy="5" r="1.8" />
       <circle cx="12" cy="12" r="1.8" />
       <circle cx="12" cy="19" r="1.8" />
+    </svg>
+  );
+}
+
+function IconSearch({ className }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <circle cx="11" cy="11" r="7" />
+      <line x1="21" y1="21" x2="16.65" y2="16.65" />
+    </svg>
+  );
+}
+
+function IconPlus({ className }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <line x1="12" y1="5" x2="12" y2="19"/>
+      <line x1="5" y1="12" x2="19" y2="12"/>
     </svg>
   );
 }
@@ -172,35 +190,22 @@ export default function Chat() {
       <div className={`hidden md:block fixed z-40 left-0 top-0 bottom-0 ${sidebarCollapsed ? 'w-16' : 'w-72'} bg-white dark:bg-slate-800/90 backdrop-blur-md border-r border-slate-200 dark:border-slate-700`}>
         <div className="p-3 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between">
           {!sidebarCollapsed && <div className="font-bold text-slate-800 dark:text-slate-100">Conversations</div>}
-          <div className="flex items-center gap-2">
-            {!sidebarCollapsed ? (
+          {!sidebarCollapsed && (
+            <div className="flex items-center gap-2">
               <button onClick={newChat} className="px-3 py-1.5 rounded-md border border-slate-200 bg-white dark:bg-slate-700/60 text-slate-800 dark:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-700">+ New</button>
-            ) : (
-              <button onClick={newChat} className="w-8 h-8 inline-flex items-center justify-center rounded-md border border-slate-200 bg-white dark:bg-slate-700/60 text-slate-800 dark:text-slate-100">+</button>
-            )}
-            <button onClick={() => setSidebarCollapsed(v => !v)} className="w-8 h-8 inline-flex items-center justify-center rounded-md border border-slate-200 bg-white dark:bg-slate-700/60 text-slate-800 dark:text-slate-100">
-              {sidebarCollapsed ? <IconChevronRight className="w-4 h-4"/> : <IconChevronLeft className="w-4 h-4"/>}
-            </button>
-          </div>
+              <button onClick={() => setSidebarCollapsed(true)} className="w-8 h-8 inline-flex items-center justify-center rounded-md border border-slate-200 bg-white dark:bg-slate-700/60 text-slate-800 dark:text-slate-100"><IconChevronLeft className="w-4 h-4"/></button>
+            </div>
+          )}
         </div>
         <div className="p-2 space-y-2 overflow-y-auto max-h-[calc(100vh-56px)] pr-1">
-          {sessionList.map(s => (
-            sidebarCollapsed ? (
-              <div key={s.id} className={`group relative w-full`}>
-                <button onClick={() => openSession(s.id)} title={s.title || 'Untitled chat'} className={`w-full p-2 rounded-lg flex items-center justify-center text-slate-800 dark:text-slate-100 ${sessionId===s.id ? 'bg-slate-100 dark:bg-slate-700/60' : 'hover:bg-slate-100 dark:hover:bg-slate-700/60'}`}>
-                  <span className="w-2 h-2 rounded-full bg-slate-400"></span>
-                </button>
-                <button onClick={(e)=>{e.stopPropagation(); setMenuSessionId(prev => prev===s.id ? '' : s.id);}} aria-label="More" className="absolute right-1 top-1/2 -translate-y-1/2 w-6 h-6 rounded-md text-slate-500 dark:text-slate-200 hover:bg-slate-200/40 dark:hover:bg-white/10 flex items-center justify-center">
-                  <IconKebab className="w-4 h-4"/>
-                </button>
-                {menuSessionId===s.id && (
-                  <div onClick={e=>e.stopPropagation()} className="absolute z-50 right-2 top-8 w-40 rounded-lg border border-slate-200 bg-white dark:bg-slate-800 shadow-lg p-1">
-                    <button onClick={()=>{ const name=prompt('Rename chat', s.title||''); if(name!==null){ renameSession(s.id,name.trim()||'Untitled chat'); refreshSessions(); setMenuSessionId(''); } }} className="w-full text-left px-3 py-2 rounded-md hover:bg-slate-100 dark:hover:bg-slate-700">Rename</button>
-                    <button onClick={()=>{ if(confirm('Delete this chat?')){ deleteSession(s.id); refreshSessions(); setMenuSessionId(''); if(sessionId===s.id){ setSessionId(''); setMessages([]); } } }} className="w-full text-left px-3 py-2 rounded-md text-red-600 hover:bg-slate-100 dark:hover:bg-slate-700">Delete</button>
-                  </div>
-                )}
-              </div>
-            ) : (
+          {sidebarCollapsed && (
+            <div className="flex flex-col items-center gap-4 py-3 mb-2 border-b border-slate-200 dark:border-slate-700">
+              <button onClick={newChat} title="New chat" className="w-8 h-8 inline-flex items-center justify-center rounded-md border border-slate-200 bg-white dark:bg-slate-700/60 text-slate-800 dark:text-slate-100"><IconPlus className="w-4 h-4"/></button>
+              <button onClick={()=> setSidebarCollapsed(false)} title="Search chats" className="w-8 h-8 inline-flex items-center justify-center rounded-md border border-slate-200 bg-white dark:bg-slate-700/60 text-slate-800 dark:text-slate-100"><IconSearch className="w-4 h-4"/></button>
+              <button onClick={()=> setSidebarCollapsed(false)} title="Expand" className="w-8 h-8 inline-flex items-center justify-center rounded-md border border-slate-200 bg-white dark:bg-slate-700/60 text-slate-800 dark:text-slate-100"><IconChevronRight className="w-4 h-4"/></button>
+            </div>
+          )}
+          {!sidebarCollapsed && sessionList.map(s => (
               <div key={s.id} className={`group relative w-full text-left p-3 rounded-lg text-slate-800 dark:text-slate-100 ${sessionId===s.id ? 'bg-slate-100 dark:bg-slate-700/60' : 'hover:bg-slate-100 dark:hover:bg-slate-700/60'}`}>
                 <button onClick={() => openSession(s.id)} className="block w-[calc(100%-36px)] text-left">
                   <div className="font-semibold truncate">{s.title || 'Untitled chat'}</div>
@@ -216,9 +221,8 @@ export default function Chat() {
                   </div>
                 )}
               </div>
-            )
           ))}
-          {sessionList.length === 0 && <div className="text-sm text-slate-500">No conversations yet.</div>}
+          {!sidebarCollapsed && sessionList.length === 0 && <div className="text-sm text-slate-500">No conversations yet.</div>}
         </div>
       </div>
 
