@@ -113,6 +113,15 @@ export default function Chat() {
     speechSynthesis.speak(utter);
   }
 
+  function persistHistory(entry) {
+    try {
+      const key = 'sera.localHistory';
+      const list = JSON.parse(localStorage.getItem(key) || '[]');
+      list.push(entry);
+      localStorage.setItem(key, JSON.stringify(list.slice(-200)));
+    } catch {}
+  }
+
   async function getAIResponse(input) {
     if (abortControllerRef.current) abortControllerRef.current.abort();
     const controller = new AbortController();
@@ -164,15 +173,6 @@ export default function Chat() {
       clearInterval(typingIntervalRef.current);
       typingIntervalRef.current = null;
     }
-  }
-
-  function persistHistory(entry) {
-    try {
-      const key = 'sera.localHistory';
-      const list = JSON.parse(localStorage.getItem(key) || '[]');
-      list.push(entry);
-      localStorage.setItem(key, JSON.stringify(list.slice(-200)));
-    } catch {}
   }
 
   function sendToBot(content) {
@@ -238,6 +238,20 @@ export default function Chat() {
     setListeningStatus('Typing or voice interrupted.');
   }
 
+  function newChat() {
+    // Stop any ongoing activity
+    setIsTypingStopped(true);
+    speechSynthesis.cancel();
+    clearTypingInterval();
+    if (abortControllerRef.current) abortControllerRef.current.abort();
+    if (recognition) recognition.stop();
+    // Reset UI
+    setText('');
+    setListeningStatus('');
+    greetedRef.current = true; // we will place greeting directly
+    setMessages([{ sender: 'SERA', content: "New chat started. How can I help?" }]);
+  }
+
   function handleKeyDown(e) {
     if (e.key === 'Enter' && !e.shiftKey && !isComposingRef.current) {
       e.preventDefault();
@@ -251,12 +265,15 @@ export default function Chat() {
 
   return (
     <div className="max-w-[1200px] mx-auto px-[clamp(16px,5vw,40px)] py-2 md:py-4 h-[calc(100vh-100px)] flex flex-col">
-      <div className="flex items-center gap-3 mb-1">
-        <img src="/logo-sera.png?v=2" alt="SERA" className="w-10 h-10 rounded" loading="lazy" />
-        <div>
-          <h1 className="text-3xl font-extrabold leading-tight">Meet <span className="text-[#ff6b6b]">SERA</span> — your sexual education and relationship assistant</h1>
-          <p className="italic text-slate-700">Talk away.</p>
+      <div className="flex items-center justify-between gap-3 mb-1">
+        <div className="flex items-center gap-3">
+          <img src="/logo-sera.png?v=2" alt="SERA" className="w-10 h-10 rounded" loading="lazy" />
+          <div>
+            <h1 className="text-3xl font-extrabold leading-tight">Meet <span className="text-[#ff6b6b]">SERA</span> — your sexual education and relationship assistant</h1>
+            <p className="italic text-slate-700">Talk away.</p>
+          </div>
         </div>
+        <button onClick={newChat} className="hidden md:inline-flex items-center justify-center px-3 py-2 rounded-xl border border-slate-200 bg-white text-slate-800 hover:bg-slate-50">New chat</button>
       </div>
 
       <div ref={containerRef} className="flex-1 min-h-0 overflow-y-auto p-4 bg-white rounded-2xl shadow-[0_10px_30px_rgba(2,6,23,.06)] mb-3 grid-lines">
