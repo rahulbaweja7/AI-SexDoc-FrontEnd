@@ -18,7 +18,10 @@ export default function NavBar() {
   return (
     <header className="sticky top-0 z-50 bg-white border-b border-slate-200">
       <div className="w-full max-w-[1200px] mx-auto py-3 px-[clamp(16px,5vw,40px)] flex items-center justify-between">
-        <Link to="/" className="no-underline text-slate-900 font-extrabold text-[20px] tracking-[0.2px]">S<span className="text-[#ff6b6b]">ERA</span></Link>
+        <Link to="/" className="no-underline flex items-center gap-2">
+          <img src="/logo-sera.png?v=2" alt="SERA" className="w-7 h-7 rounded" loading="lazy" />
+          <span className="text-slate-900 font-extrabold text-[20px] tracking-[0.2px]">S<span className="text-[#ff6b6b]">ERA</span></span>
+        </Link>
         <nav className={`${open ? 'grid gap-2' : 'hidden md:flex md:items-center md:gap-4'}`}>
           <Link to="/" className={`no-underline px-3 py-1.5 rounded-md ${pathname === '/' ? 'text-slate-900 bg-slate-100 border border-slate-200' : 'text-slate-600 hover:text-slate-900'}`}>Home</Link>
           <Link to="/history" className={`no-underline px-3 py-1.5 rounded-md ${pathname.startsWith('/history') ? 'text-slate-900 bg-slate-100 border border-slate-200' : 'text-slate-600 hover:text-slate-900'}`}>History</Link>

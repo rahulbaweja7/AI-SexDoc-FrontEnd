@@ -40,6 +40,7 @@ export default function Chat() {
   const abortControllerRef = useRef(null);
   const isComposingRef = useRef(false);
   const containerRef = useRef(null);
+  const greetedRef = useRef(false);
 
   const [messages, setMessages] = useState([]);
   const [text, setText] = useState("");
@@ -92,8 +93,15 @@ export default function Chat() {
     };
   }, [recognition]);
 
+  // One-time warm greeting
+  useEffect(() => {
+    if (greetedRef.current) return;
+    greetedRef.current = true;
+    setMessages(prev => prev.length === 0 ? [{ sender: 'SERA', content: "Hi, I’m SERA. I’m here for you—ask anything, or tap the mic to speak." }] : prev);
+  }, []);
+
   function appendMessage(sender, content) {
-    setMessages(prev => [...prev, { sender, content }]);
+    setMessages(prev => [...prev, { sender, content }] );
   }
 
   function playVoice(text) {
@@ -231,8 +239,13 @@ export default function Chat() {
 
   return (
     <div className="max-w-[1200px] mx-auto px-[clamp(16px,5vw,40px)] py-2 md:py-4 h-[calc(100vh-100px)] flex flex-col">
-      <h1 className="text-3xl font-extrabold mb-1">Meet <span className="text-[#ff6b6b]">SERA</span> — your sexual education and relationship assistant</h1>
-      <p className="italic text-slate-700 mb-2">Talk away.</p>
+      <div className="flex items-center gap-3 mb-1">
+        <img src="/logo-sera.png?v=2" alt="SERA" className="w-10 h-10 rounded" loading="lazy" />
+        <div>
+          <h1 className="text-3xl font-extrabold leading-tight">Meet <span className="text-[#ff6b6b]">SERA</span> — your sexual education and relationship assistant</h1>
+          <p className="italic text-slate-700">Talk away.</p>
+        </div>
+      </div>
 
       <div ref={containerRef} className="flex-1 min-h-0 overflow-y-auto p-4 bg-white rounded-2xl shadow-[0_10px_30px_rgba(2,6,23,.06)] mb-3 grid-lines">
         {messages.map((m, idx) => (
