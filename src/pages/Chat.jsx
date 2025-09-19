@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Navigate } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext.jsx';
 
 const isLocal = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
 const isStaticServer = typeof window !== 'undefined' && window.location.port === '5500';
@@ -32,6 +33,7 @@ function IconSend({ className }) {
 }
 
 export default function Chat() {
+  const { token } = useAuth();
   const startBtnRef = useRef(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [isTypingStopped, setIsTypingStopped] = useState(false);
@@ -48,7 +50,6 @@ export default function Chat() {
   const preferredVoice = usePreferredVoice();
 
   useEffect(() => {
-    // Dev visibility for endpoint selection
     // eslint-disable-next-line no-console
     console.log('[SERA] Using API_BASE:', API_BASE);
   }, []);
@@ -113,16 +114,18 @@ export default function Chat() {
   }
 
   async function getAIResponse(input) {
-    // Abort any in-flight request
     if (abortControllerRef.current) abortControllerRef.current.abort();
     const controller = new AbortController();
     abortControllerRef.current = controller;
+
+    const headers = { 'Content-Type': 'application/json' };
+    if (token) headers['Authorization'] = `Bearer ${token}`;
 
     let res;
     try {
       res = await fetch(`${API_BASE}/ask`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify({ userMessage: input }),
         signal: controller.signal,
       });
@@ -136,17 +139,10 @@ export default function Chat() {
     let raw = '';
     try {
       raw = await res.text();
-    } catch (readErr) {
-      // ignore; fall through
-    }
+    } catch (readErr) {}
 
-    // Try to parse JSON if present
     let data = null;
-    try {
-      data = raw ? JSON.parse(raw) : null;
-    } catch (_) {
-      // non-JSON, keep raw body
-    }
+    try { data = raw ? JSON.parse(raw) : null; } catch (_) {}
 
     if (!res.ok) {
       // eslint-disable-next-line no-console
@@ -170,21 +166,38 @@ export default function Chat() {
     }
   }
 
+  function persistHistory(entry) {
+    try {
+      const key = 'sera.localHistory';
+      const list = JSON.parse(localStorage.getItem(key) || '[]');
+      list.push(entry);
+      localStorage.setItem(key, JSON.stringify(list.slice(-200)));
+    } catch {}
+  }
+
   function sendToBot(content) {
-    // Clear any previous interruption/status message when sending anew
     setListeningStatus('');
 
     appendMessage("You", content);
     setIsTypingStopped(false);
     clearTypingInterval();
     setIsProcessing(true);
+    const startedAt = Date.now();
     getAIResponse(content)
       .then(reply => {
         playVoice(reply);
         typeBotReply(reply);
+        const entry = { timestamp: startedAt, userMessage: content, reply };
+        persistHistory(entry);
+        // Try to persist remotely
+        try {
+          const headers = { 'Content-Type': 'application/json' };
+          if (token) headers['Authorization'] = `Bearer ${token}`;
+          fetch(`${API_BASE}/history`, { method: 'POST', headers, body: JSON.stringify(entry) }).catch(() => {});
+        } catch {}
       })
       .catch((err) => {
-        if (err.message === 'Request cancelled') return; // user stopped
+        if (err.message === 'Request cancelled') return;
         appendMessage("SERA", `Something went wrong: ${err.message}`);
       })
       .finally(() => {
@@ -195,7 +208,6 @@ export default function Chat() {
 
   function typeBotReply(text) {
     clearTypingInterval();
-    // Add placeholder first
     setMessages(prev => [...prev, { sender: 'SERA', content: '' }]);
 
     let index = 0;

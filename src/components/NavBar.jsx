@@ -1,10 +1,12 @@
 import React, { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext.jsx';
 
 export default function NavBar() {
   const [open, setOpen] = useState(false);
   const { pathname } = useLocation();
   const navigate = useNavigate();
+  const { isAuthenticated, user, logout } = useAuth();
 
   function toggleTheme() {
     document.documentElement.classList.toggle('dark');
@@ -26,9 +28,23 @@ export default function NavBar() {
           <Link to="/" className={`no-underline px-3 py-1.5 rounded-md ${pathname === '/' ? 'text-slate-900 bg-slate-100 border border-slate-200' : 'text-slate-600 hover:text-slate-900'}`}>Home</Link>
           <Link to="/history" className={`no-underline px-3 py-1.5 rounded-md ${pathname.startsWith('/history') ? 'text-slate-900 bg-slate-100 border border-slate-200' : 'text-slate-600 hover:text-slate-900'}`}>History</Link>
           <Link to="/about" className={`no-underline px-3 py-1.5 rounded-md ${pathname.startsWith('/about') ? 'text-slate-900 bg-slate-100 border border-slate-200' : 'text-slate-600 hover:text-slate-900'}`}>About</Link>
+          {user?.role === 'admin' && (
+            <Link to="/admin" className={`no-underline px-3 py-1.5 rounded-md ${pathname.startsWith('/admin') ? 'text-slate-900 bg-slate-100 border border-slate-200' : 'text-slate-600 hover:text-slate-900'}`}>Admin</Link>
+          )}
         </nav>
         <div className="flex items-center gap-2">
-          <button className="btn-primary hidden md:inline-flex" onClick={goToChat}>Go to Chat</button>
+          {!isAuthenticated ? (
+            <>
+              <Link to="/login" className="no-underline px-3 py-1.5 rounded-md text-slate-600 hover:text-slate-900 border border-slate-200">Sign in</Link>
+              <Link to="/register" className="btn-primary">Create account</Link>
+            </>
+          ) : (
+            <>
+              <span className="hidden md:inline text-slate-600">Hi, {user?.name || user?.email || 'you'}</span>
+              <button className="btn-primary hidden md:inline-flex" onClick={goToChat}>Go to Chat</button>
+              <button onClick={logout} className="no-underline px-3 py-1.5 rounded-md text-slate-600 hover:text-slate-900 border border-slate-200">Sign out</button>
+            </>
+          )}
           <button onClick={toggleTheme} className="hidden md:inline-flex items-center justify-center w-10 h-10 rounded-full border border-slate-200 bg-white">🌓</button>
           <button aria-label="Menu" className="inline-flex md:hidden w-[38px] h-[38px] rounded-lg border border-slate-200 bg-white items-center justify-center gap-1.5 flex-col" onClick={() => setOpen(v => !v)}>
             <span className="block w-[18px] h-[2px] bg-slate-900"></span>
