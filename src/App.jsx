@@ -7,12 +7,12 @@ export default function App() {
   const isHome = location.pathname === '/';
   return (
     <div className="min-h-screen">
-      <div className="h-1 bg-gradient-to-r from-rose-400 via-fuchsia-500 to-indigo-500"/>
-      <NavBar />
-      <main className={`${isHome ? 'p-0' : 'py-8 px-[clamp(16px,5vw,40px)]'}`}>
+      {isHome && <div className="h-1 bg-gradient-to-r from-rose-400 via-fuchsia-500 to-indigo-500"/>}
+      {isHome ? <NavBar /> : null}
+      <main className={`${isHome ? 'p-0' : ''}`}>
         <Outlet key={location.pathname} />
       </main>
-      <div className="h-1 bg-gradient-to-r from-indigo-500 via-fuchsia-500 to-rose-400"/>
+      {isHome && <div className="h-1 bg-gradient-to-r from-indigo-500 via-fuchsia-500 to-rose-400"/>}
     </div>
   );
 }
