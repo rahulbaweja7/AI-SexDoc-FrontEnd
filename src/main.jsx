@@ -6,6 +6,7 @@ import Home from './pages/Home.jsx';
 import Chat from './pages/Chat.jsx';
 import About from './pages/About.jsx';
 import History from './pages/History.jsx';
+import Settings from './pages/Settings.jsx';
 import Onboarding from './pages/Onboarding.jsx';
 import Login from './pages/Login.jsx';
 import Register from './pages/Register.jsx';
@@ -30,6 +31,7 @@ createRoot(document.getElementById('root')).render(
             <Route index element={<Home />} />
             <Route path="chat" element={<Chat />} />
             <Route path="about" element={<About />} />
+            <Route path="settings" element={<Settings />} />
             <Route path="history" element={<ProtectedRoute><History /></ProtectedRoute>} />
             <Route path="onboarding" element={<Onboarding />} />
             <Route path="login" element={<Login />} />

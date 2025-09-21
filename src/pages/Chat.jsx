@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Navigate, useLocation, useNavigate } from 'react-router-dom';
+import { Navigate, useLocation, useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext.jsx';
 import { createSession, getSession, addMessageToSession, getAllSessions, renameSession, deleteSession } from '../utils/sessions.js';
 
@@ -85,6 +85,24 @@ function IconPlus({ className }) {
   );
 }
 
+function IconLock({ className }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <rect x="3" y="11" width="18" height="11" rx="2"/>
+      <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+    </svg>
+  );
+}
+
+function IconGear({ className }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <circle cx="12" cy="12" r="3"></circle>
+      <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9c0 .66.39 1.26 1 1.51H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+    </svg>
+  );
+}
+
 export default function Chat() {
   const { token } = useAuth();
   const location = useLocation();
@@ -94,6 +112,7 @@ export default function Chat() {
   const [sessionId, setSessionId] = useState(initialSessionId);
 
   const startBtnRef = useRef(null);
+  const inputRef = useRef(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [isTypingStopped, setIsTypingStopped] = useState(false);
   const isTypingStoppedRef = useRef(false);
@@ -107,10 +126,11 @@ export default function Chat() {
   const [text, setText] = useState("");
   const [listeningStatus, setListeningStatus] = useState("");
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false); // desktop collapse
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(() => (localStorage.getItem('sera.sidebarCollapsedDefault') ?? '0') === '1'); // desktop collapse
   const [sessionList, setSessionList] = useState(() => getAllSessions());
   const preferredVoice = usePreferredVoice();
   const [menuSessionId, setMenuSessionId] = useState('');
+  const [genZ, setGenZ] = useState(() => (localStorage.getItem('sera.genZ') ?? '0') === '1');
 
   useEffect(() => { console.log('[SERA] Using API_BASE:', API_BASE); }, []); // eslint-disable-line
   useEffect(() => { isTypingStoppedRef.current = isTypingStopped; }, [isTypingStopped]);
@@ -132,6 +152,7 @@ export default function Chat() {
 
   function refreshSessions() { setSessionList(getAllSessions()); }
   useEffect(() => { refreshSessions(); }, []);
+  useEffect(() => { localStorage.setItem('sera.genZ', genZ ? '1' : '0'); }, [genZ]);
   useEffect(() => {
     function closeMenus() { setMenuSessionId(''); }
     window.addEventListener('click', closeMenus);
@@ -142,7 +163,7 @@ export default function Chat() {
 
   function appendMessage(sender, content) { setMessages(prev => [...prev, { sender, content }]); }
 
-  function playVoice(text) { const utter = new SpeechSynthesisUtterance(text); if (preferredVoice) utter.voice = preferredVoice; utter.rate = 1; utter.pitch = 1.05; speechSynthesis.cancel(); speechSynthesis.speak(utter); }
+  function playVoice(text) { if ((localStorage.getItem('sera.voiceEnabled') ?? '1') !== '1') return; const utter = new SpeechSynthesisUtterance(text); if (preferredVoice) utter.voice = preferredVoice; utter.rate = 1; utter.pitch = 1.05; speechSynthesis.cancel(); speechSynthesis.speak(utter); }
 
   function persistHistory(entry) { try { const key = 'sera.localHistory'; const list = JSON.parse(localStorage.getItem(key) || '[]'); list.push(entry); localStorage.setItem(key, JSON.stringify(list.slice(-200))); } catch {} }
 
@@ -165,6 +186,7 @@ export default function Chat() {
     const startedAt = Date.now();
     if (!sessionId) { const s = createSession(text.slice(0, 60) || 'New chat'); setSessionId(s.id); navigate(`/chat?session=${encodeURIComponent(s.id)}`); refreshSessions(); }
     if (sessionId) addMessageToSession(sessionId, { sender: 'You', content, timestamp: startedAt });
+    // After first user message, welcome panel should go away automatically
     getAIResponse(content)
       .then(reply => { playVoice(reply); typeBotReply(reply); const entry = { timestamp: startedAt, userMessage: content, reply }; persistHistory(entry); if (sessionId) addMessageToSession(sessionId, { sender: 'SERA', content: reply, timestamp: Date.now() }); refreshSessions(); try { const headers = { 'Content-Type': 'application/json' }; if (token) headers['Authorization'] = `Bearer ${token}`; fetch(`${API_BASE}/history`, { method: 'POST', headers, body: JSON.stringify(entry) }).catch(() => {}); } catch {} })
       .catch((err) => { if (err.message === 'Request cancelled') return; appendMessage("SERA", `Something went wrong: ${err.message}`); })
@@ -173,7 +195,8 @@ export default function Chat() {
 
   function typeBotReply(text) {
     clearTypingInterval(); setMessages(prev => [...prev, { sender: 'SERA', content: '' }]);
-    let index = 0; typingIntervalRef.current = setInterval(() => { if (isTypingStoppedRef.current) { clearTypingInterval(); return; } index += 1; const partial = text.slice(0, index); setMessages(prev => { if (prev.length === 0) return prev; const updated = prev.slice(); const lastIdx = updated.length - 1; updated[lastIdx] = { sender: 'SERA', content: partial }; return updated; }); if (index >= text.length) clearTypingInterval(); }, 35);
+    const speed = parseInt(localStorage.getItem('sera.typingSpeedMs') || '35', 10) || 35;
+    let index = 0; typingIntervalRef.current = setInterval(() => { if (isTypingStoppedRef.current) { clearTypingInterval(); return; } index += 1; const partial = text.slice(0, index); setMessages(prev => { if (prev.length === 0) return prev; const updated = prev.slice(); const lastIdx = updated.length - 1; updated[lastIdx] = { sender: 'SERA', content: partial }; return updated; }); if (index >= text.length) clearTypingInterval(); }, speed);
   }
 
   function stopAll() { setIsTypingStopped(true); speechSynthesis.cancel(); clearTypingInterval(); if (abortControllerRef.current) abortControllerRef.current.abort(); if (recognition) recognition.stop(); setListeningStatus('Typing or voice interrupted.'); }
@@ -182,27 +205,29 @@ export default function Chat() {
 
   function openSession(id) { setSessionId(id); navigate(`/chat?session=${encodeURIComponent(id)}`); const s = getSession(id); setMessages(s?.messages || []); setSidebarOpen(false); }
 
-  function handleKeyDown(e) { if (e.key === 'Enter' && !e.shiftKey && !isComposingRef.current) { e.preventDefault(); const value = text.trim(); if (value) { sendToBot(value); setText(''); } } }
+  function handleKeyDown(e) { const enterToSend = (localStorage.getItem('sera.enterToSend') ?? '1') === '1'; if (enterToSend && e.key === 'Enter' && !e.shiftKey && !isComposingRef.current) { e.preventDefault(); const value = text.trim(); if (value) { sendToBot(value); setText(''); } } }
 
   return (
-    <div className={`relative h-screen ${sidebarCollapsed ? 'md:pl-20' : 'md:pl-72'}`}>
+    <div className={`relative h-screen bg-[#f7f9fc] dark:bg-slate-900 ${sidebarCollapsed ? 'md:pl-20' : 'md:pl-72'}`}>
       {/* Pinned sidebar on md+ with collapse toggle */}
-      <div className={`hidden md:block fixed z-40 left-0 top-0 bottom-0 ${sidebarCollapsed ? 'w-16' : 'w-72'} bg-white dark:bg-slate-800/90 backdrop-blur-md border-r border-slate-200 dark:border-slate-700`}>
+      <div className={`hidden md:block fixed z-40 left-0 top-0 bottom-0 ${sidebarCollapsed ? 'w-16' : 'w-72'} bg-gradient-to-b from-white/90 to-slate-50/90 dark:from-slate-900/80 dark:to-slate-800/70 backdrop-blur-md border-r border-slate-200/80 dark:border-white/10`}>
         <div className="p-3 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between">
           {!sidebarCollapsed && <div className="font-bold text-slate-800 dark:text-slate-100">Conversations</div>}
           {!sidebarCollapsed && (
             <div className="flex items-center gap-2">
-              <button onClick={newChat} className="px-3 py-1.5 rounded-md border border-slate-200 bg-white dark:bg-slate-700/60 text-slate-800 dark:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-700">+ New</button>
-              <button onClick={() => setSidebarCollapsed(true)} className="w-8 h-8 inline-flex items-center justify-center rounded-md border border-slate-200 bg-white dark:bg-slate-700/60 text-slate-800 dark:text-slate-100"><IconChevronLeft className="w-4 h-4"/></button>
+              <button onClick={newChat} className="btn-primary px-3 py-1.5 rounded-xl">+ New</button>
+              <Link to="/settings" title="Settings" className="w-9 h-9 inline-flex items-center justify-center rounded-full bg-white/70 dark:bg-white/10 border border-slate-200/60 dark:border-white/10 hover:bg-white/90 dark:hover:bg-white/15 text-slate-700 dark:text-slate-200"><IconGear className="w-4 h-4"/></Link>
+              <button onClick={() => setSidebarCollapsed(true)} className="w-9 h-9 inline-flex items-center justify-center rounded-full bg-white/70 dark:bg-white/10 border border-slate-200/60 dark:border-white/10 hover:bg-white/90 dark:hover:bg-white/15 text-slate-700 dark:text-slate-200"><IconChevronLeft className="w-4 h-4"/></button>
             </div>
           )}
         </div>
         <div className="p-2 space-y-2 overflow-y-auto max-h-[calc(100vh-56px)] pr-1">
           {sidebarCollapsed && (
-            <div className="flex flex-col items-center gap-4 py-3 mb-2 border-b border-slate-200 dark:border-slate-700">
-              <button onClick={newChat} title="New chat" className="w-8 h-8 inline-flex items-center justify-center rounded-md border border-slate-200 bg-white dark:bg-slate-700/60 text-slate-800 dark:text-slate-100"><IconPlus className="w-4 h-4"/></button>
-              <button onClick={()=> setSidebarCollapsed(false)} title="Search chats" className="w-8 h-8 inline-flex items-center justify-center rounded-md border border-slate-200 bg-white dark:bg-slate-700/60 text-slate-800 dark:text-slate-100"><IconSearch className="w-4 h-4"/></button>
-              <button onClick={()=> setSidebarCollapsed(false)} title="Expand" className="w-8 h-8 inline-flex items-center justify-center rounded-md border border-slate-200 bg-white dark:bg-slate-700/60 text-slate-800 dark:text-slate-100"><IconChevronRight className="w-4 h-4"/></button>
+            <div className="flex flex-col items-center gap-4 py-3 mb-2 border-b border-slate-200/60 dark:border-white/10">
+              <button onClick={newChat} title="New chat" className="w-9 h-9 inline-flex items-center justify-center rounded-full bg-white/70 dark:bg-white/10 border border-slate-200/60 dark:border-white/10 hover:bg-white/90 dark:hover:bg-white/15 text-slate-700 dark:text-slate-200"><IconPlus className="w-4 h-4"/></button>
+              <Link to="/settings" title="Settings" className="w-9 h-9 inline-flex items-center justify-center rounded-full bg-white/70 dark:bg-white/10 border border-slate-200/60 dark:border-white/10 hover:bg-white/90 dark:hover:bg-white/15 text-slate-700 dark:text-slate-200"><IconGear className="w-4 h-4"/></Link>
+              <button onClick={()=> setSidebarCollapsed(false)} title="Search chats" className="w-9 h-9 inline-flex items-center justify-center rounded-full bg-white/70 dark:bg-white/10 border border-slate-200/60 dark:border-white/10 hover:bg-white/90 dark:hover:bg-white/15 text-slate-700 dark:text-slate-200"><IconSearch className="w-4 h-4"/></button>
+              <button onClick={()=> setSidebarCollapsed(false)} title="Expand" className="w-9 h-9 inline-flex items-center justify-center rounded-full bg-white/70 dark:bg-white/10 border border-slate-200/60 dark:border-white/10 hover:bg-white/90 dark:hover:bg-white/15 text-slate-700 dark:text-slate-200"><IconChevronRight className="w-4 h-4"/></button>
             </div>
           )}
           {!sidebarCollapsed && sessionList.map(s => (
@@ -231,13 +256,16 @@ export default function Chat() {
         <button onClick={() => { setSidebarOpen(true); refreshSessions(); }} className="w-10 h-10 inline-flex items-center justify-center rounded-lg border border-slate-200 bg-white shadow-sm"><IconMenu className="w-5 h-5"/></button>
       </div>
 
-      <div className={`${sidebarOpen ? 'translate-x-0' : '-translate-x-full'} md:hidden fixed z-40 left-0 top-0 bottom-0 w-72 bg-white dark:bg-slate-800/90 backdrop-blur-md border-r border-slate-200 dark:border-slate-700 transition-transform`}>
+      <div className={`${sidebarOpen ? 'translate-x-0' : '-translate-x-full'} md:hidden fixed z-40 left-0 top-0 bottom-0 w-72 bg-gradient-to-b from-white/95 to-slate-50/95 dark:from-slate-900/90 dark:to-slate-800/80 backdrop-blur-md border-r border-slate-200/80 dark:border-white/10 transition-transform`}>
         <div className="p-3 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between">
           <div className="font-bold text-slate-800 dark:text-slate-100">Conversations</div>
-          <button onClick={() => setSidebarOpen(false)} className="w-8 h-8 inline-flex items-center justify-center rounded-md border border-slate-200 bg-white dark:bg-slate-700/60 text-slate-800 dark:text-slate-100">×</button>
+          <button onClick={() => setSidebarOpen(false)} className="w-9 h-9 inline-flex items-center justify-center rounded-full bg-white/70 dark:bg-white/10 border border-slate-200/60 dark:border-white/10 hover:bg-white/90 dark:hover:bg-white/15 text-slate-700 dark:text-slate-200">×</button>
         </div>
         <div className="p-3">
-          <button onClick={newChat} className="w-full mb-3 inline-flex items-center justify-center px-3 py-2 rounded-xl border border-slate-200 bg-white dark:bg-slate-700/60 text-slate-800 dark:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-700">+ New chat</button>
+          <div className="flex items-center gap-2 mb-3">
+            <button onClick={newChat} className="flex-1 inline-flex items-center justify-center px-3 py-2 rounded-xl btn-primary">+ New chat</button>
+            <Link to="/settings" title="Settings" className="w-10 h-10 inline-flex items-center justify-center rounded-full bg-white/70 dark:bg-white/10 border border-slate-200/60 dark:border-white/10 hover:bg-white/90 dark:hover:bg-white/15 text-slate-700 dark:text-slate-200"><IconGear className="w-5 h-5"/></Link>
+          </div>
           <div className="space-y-2 overflow-y-auto max-h-[calc(100vh-96px)] pr-1">
             {sessionList.map(s => (
               <div key={s.id} className={`group relative w-full text-left p-3 rounded-lg text-slate-800 dark:text-slate-100 ${sessionId===s.id ? 'bg-slate-100 dark:bg-slate-700/60' : 'hover:bg-slate-100 dark:hover:bg-slate-700/60'}`}>
@@ -264,32 +292,65 @@ export default function Chat() {
 
       {/* Chat content area */}
       <div className="max-w-[1200px] mx-auto px-[clamp(16px,5vw,40px)] py-4 h-full flex flex-col">
-        <div className="flex items-center justify-between gap-3 mb-2">
+        <div className="flex items-center justify-between gap-3 mb-3">
           <div className="flex items-center gap-3">
-            <img src="/logo-sera.png?v=2" alt="SERA" className="w-10 h-10 rounded" loading="lazy" />
+            <div className="relative">
+              <img src="/logo-sera.png?v=2" alt="SERA" className="w-10 h-10 rounded-full ring-4 ring-indigo-200/60" loading="lazy" />
+            </div>
             <div>
-              <h1 className="text-3xl font-extrabold leading-tight">Meet <span className="text-[#ff6b6b]">SERA</span> — your sexual education and relationship assistant</h1>
-              <p className="italic text-slate-700">Talk away.</p>
+              <h1 className="text-[clamp(22px,3vw,28px)] font-extrabold leading-tight m-0">Meet <span className="text-[#ff6b6b]">SERA</span> — your sexual education and relationship assistant</h1>
+              <p className="italic text-slate-700 dark:text-slate-300 m-0">Talk away.</p>
             </div>
           </div>
-          <div className="hidden md:flex items-center gap-2">
-            <button onClick={newChat} className="inline-flex items-center justify-center px-3 py-2 rounded-xl border border-slate-200 bg-white text-slate-800 hover:bg-slate-50">New chat</button>
+          <div className="hidden md:flex items-center gap-3">
+            <button onClick={newChat} className="inline-flex items-center justify-center px-3 py-2 rounded-xl btn-ghost">New chat</button>
           </div>
         </div>
 
-        <div ref={containerRef} className="flex-1 min-h-0 overflow-y-auto p-4 bg-white rounded-2xl shadow-[0_10px_30px_rgba(2,6,23,.06)] mb-3 grid-lines">
-          {messages.map((m, idx) => (
-            <div key={idx} className={`mb-3 flex ${m.sender === 'You' ? 'justify-end' : 'justify-start'}`}>
-              <div className={`${m.sender === 'You' ? 'bg-indigo-600 text-white' : 'bg-slate-100 text-slate-900'} max-w-[80%] px-4 py-2 rounded-2xl ${m.sender === 'You' ? 'rounded-br-sm' : 'rounded-bl-sm'} shadow-sm`}>
-                <div className="text-sm opacity-80 mb-0.5 font-semibold">{m.sender}</div>
-                <div>{m.content}</div>
+        <div className="rounded-[20px] bg-white dark:bg-slate-900/40 border border-slate-200 dark:border-slate-800 shadow-[0_12px_40px_rgba(2,6,23,.06)] mb-3">
+          <div ref={containerRef} className="flex-1 min-h-0 overflow-y-auto p-5">
+            {messages.length === 0 || !messages.some(m => m.sender === 'You') ? (
+              <div className="min-h-[50vh] flex items-center justify-center">
+                <div className="w-full max-w-[520px] mx-auto">
+                  <div className="flex items-center justify-center mb-5">
+                    <div className="w-10 h-10 rounded-full bg-yellow-400 shadow-[0_8px_24px_rgba(250,204,21,.35)]"></div>
+                  </div>
+                  <h2 className="text-center text-xl font-extrabold mb-2">welcome</h2>
+                  <div className="space-y-3">
+                    <button disabled={!recognition} onClick={() => { if (!recognition || isProcessing) return; recognition.start(); setListeningStatus('Recording...'); if (startBtnRef.current) startBtnRef.current.disabled = true; }} className={`w-full text-left px-4 py-3 rounded-2xl border ${recognition ? 'bg-white hover:shadow-sm' : 'bg-white/70'} border-slate-200 flex items-center justify-between`}>
+                      <div>
+                        <div className="font-semibold">voice mode</div>
+                        <div className="text-sm text-slate-500">speak your question</div>
+                      </div>
+                      {!recognition && <IconLock className="w-5 h-5 text-slate-400"/>}
+                    </button>
+                    <button onClick={() => { if (inputRef.current) inputRef.current.focus(); }} className="w-full text-left px-4 py-3 rounded-2xl border bg-white hover:shadow-sm border-slate-200 flex items-center justify-between">
+                      <div>
+                        <div className="font-semibold">text mode</div>
+                        <div className="text-sm text-slate-500">not in the talking mood?</div>
+                      </div>
+                      <IconChevronRight className="w-5 h-5 text-slate-400"/>
+                    </button>
+                  </div>
+                </div>
               </div>
-            </div>
-          ))}
+            ) : null}
+            {messages.map((m, idx) => (
+              <div key={idx} className={`mb-3 flex ${m.sender === 'You' ? 'justify-end' : 'justify-start'}`}>
+                <div className={`${m.sender === 'You' 
+                  ? 'bg-gradient-to-br from-indigo-500 to-pink-500 text-white shadow-lg'
+                  : 'bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100'}
+                  max-w-[78%] px-4 py-2 rounded-3xl ${m.sender === 'You' ? 'rounded-br-xl' : 'rounded-bl-xl'}`}>
+                  <div className="text-[12px] opacity-75 mb-0.5 font-semibold tracking-wide">{m.sender}</div>
+                  <div className="leading-relaxed">{m.content}</div>
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
-        <p className="italic mb-2">{listeningStatus}</p>
+        <p className="italic text-slate-600 dark:text-slate-300 mb-2">{listeningStatus}</p>
 
-        <div className="flex items-center bg-white rounded-full p-2 shadow-[0_10px_30px_rgba(2,6,23,.06)]">
+        <div className="flex items-center bg-white rounded-full p-2 border border-slate-200 shadow-[0_8px_24px_rgba(2,6,23,.05)]">
           <input
             value={text}
             onChange={e => setText(e.target.value)}
@@ -297,13 +358,14 @@ export default function Chat() {
             onCompositionStart={() => { isComposingRef.current = true; }}
             onCompositionEnd={() => { isComposingRef.current = false; }}
             placeholder="Ask anything (Enter to send, Shift+Enter for newline)"
-            className="flex-1 border-0 outline-none text-[16px] px-4 py-2 rounded-full"
+            className="flex-1 border-0 outline-none text-[16px] px-4 py-2 rounded-full bg-transparent"
+            ref={inputRef}
           />
-          <button aria-label="Start voice input" title="Start voice input" ref={startBtnRef} onClick={() => { if (!recognition || isProcessing) return; recognition.start(); setListeningStatus('Recording...'); if (startBtnRef.current) startBtnRef.current.disabled = true; }} className="inline-flex items-center justify-center w-10 h-10 rounded-full text-slate-600 hover:bg-slate-100 ml-2"><IconMic className="w-5 h-5" /></button>
-          <button aria-label="Stop" title="Stop" onClick={stopAll} className="inline-flex items-center justify-center w-10 h-10 rounded-full text-slate-600 hover:bg-slate-100 ml-2"><IconStop className="w-5 h-5" /></button>
+          <button aria-label="Start voice input" title="Start voice input" ref={startBtnRef} onClick={() => { if (!recognition || isProcessing) return; recognition.start(); setListeningStatus('Recording...'); if (startBtnRef.current) startBtnRef.current.disabled = true; }} className="inline-flex items-center justify-center w-10 h-10 rounded-full text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-white/10 ml-2"><IconMic className="w-5 h-5" /></button>
+          <button aria-label="Stop" title="Stop" onClick={stopAll} className="inline-flex items-center justify-center w-10 h-10 rounded-full text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-white/10 ml-2"><IconStop className="w-5 h-5" /></button>
           <button aria-label="Send" title="Send" onClick={() => { if (text.trim()) { sendToBot(text.trim()); setText(''); } }} className="ml-2 btn-gradient rounded-full w-12 h-12 inline-flex items-center justify-center"><IconSend className="w-5 h-5 text-white" /></button>
         </div>
-      </div>
+        </div>
     </div>
   );
 }
