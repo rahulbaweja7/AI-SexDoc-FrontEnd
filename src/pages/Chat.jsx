@@ -208,7 +208,7 @@ export default function Chat() {
   function handleKeyDown(e) { const enterToSend = (localStorage.getItem('sera.enterToSend') ?? '1') === '1'; if (enterToSend && e.key === 'Enter' && !e.shiftKey && !isComposingRef.current) { e.preventDefault(); const value = text.trim(); if (value) { sendToBot(value); setText(''); } } }
 
   return (
-    <div className={`relative h-[calc(100vh-56px)] ${sidebarCollapsed ? 'md:pl-16' : 'md:pl-64'} transition-all`}>
+    <div className={`relative h-[calc(100vh-56px)] ${sidebarCollapsed ? 'md:pl-16' : 'md:pl-64'} transition-all bg-aurora`}>
       {/* Pinned sidebar on md+ with collapse toggle */}
       <div className={`hidden md:block fixed z-40 left-0 top-[56px] bottom-0 ${sidebarCollapsed ? 'w-16' : 'w-64'} bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 transition-[width] duration-200`}>
         <div className="p-3 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between">
@@ -292,7 +292,7 @@ export default function Chat() {
       {sidebarOpen && (<div onClick={() => setSidebarOpen(false)} className="md:hidden fixed z-30 top-0 left-0 right-0 bottom-0 bg-black/20"/>) }
 
       {/* Chat content area */}
-      <div className="max-w-[1200px] mx-auto px-[clamp(16px,5vw,40px)] py-6 h-full flex flex-col">
+      <div className="max-w-[1280px] mx-auto px-[clamp(16px,5vw,40px)] py-6 h-full flex flex-col">
         <div className="flex items-center justify-between gap-3 mb-3">
           <div className="flex items-center gap-3">
             <div className="relative">
@@ -308,16 +308,8 @@ export default function Chat() {
           </div>
         </div>
 
-        <div className="rounded-2xl bg-white dark:bg-slate-900/40 border border-slate-200 dark:border-slate-800 shadow-[0_12px_40px_rgba(2,6,23,.06)] mb-4">
-          <div ref={containerRef} className="flex-1 min-h-0 overflow-y-auto p-6">
-            {messages.length === 0 || !messages.some(m => m.sender === 'You') ? (
-              <div className="min-h-[50vh] flex items-center justify-center">
-                <div className="w-full max-w-[520px] mx-auto">
-                  <h2 className="text-center text-xl font-extrabold mb-2">welcome</h2>
-                  
-                </div>
-              </div>
-            ) : null}
+        <div className="flex flex-col h-[72vh] md:h-[76vh] rounded-2xl bg-white dark:bg-slate-900/40 border border-slate-200 dark:border-slate-800 shadow-[0_12px_40px_rgba(2,6,23,.06)] mb-5">
+          <div ref={containerRef} className="flex-1 min-h-0 overflow-y-auto p-7 md:p-8 overscroll-contain">
             {messages.map((m, idx) => (
               <div key={idx} className={`mb-3 flex ${m.sender === 'You' ? 'justify-end' : 'justify-start'}`}>
                 <div className={`${m.sender === 'You' 
@@ -333,7 +325,7 @@ export default function Chat() {
         </div>
         <p className="italic text-slate-600 dark:text-slate-300 mb-2">{listeningStatus}</p>
 
-        <div className="flex items-center bg-white rounded-full p-2 border border-slate-200 shadow-[0_8px_24px_rgba(2,6,23,.05)]">
+        <div className="sticky bottom-4 left-0 right-0 mx-auto max-w-[1200px] flex items-center bg-white rounded-full p-2 border border-slate-200 shadow-[0_8px_24px_rgba(2,6,23,.05)]">
           <input
             value={text}
             onChange={e => setText(e.target.value)}
