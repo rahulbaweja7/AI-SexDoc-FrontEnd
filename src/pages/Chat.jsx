@@ -208,16 +208,16 @@ export default function Chat() {
   function handleKeyDown(e) { const enterToSend = (localStorage.getItem('sera.enterToSend') ?? '1') === '1'; if (enterToSend && e.key === 'Enter' && !e.shiftKey && !isComposingRef.current) { e.preventDefault(); const value = text.trim(); if (value) { sendToBot(value); setText(''); } } }
 
   return (
-    <div className={`relative h-screen bg-[#f7f9fc] dark:bg-slate-900 ${sidebarCollapsed ? 'md:pl-20' : 'md:pl-72'}`}>
+    <div className={`relative h-[calc(100vh-56px)] ${sidebarCollapsed ? 'md:pl-16' : 'md:pl-64'} transition-all`}>
       {/* Pinned sidebar on md+ with collapse toggle */}
-      <div className={`hidden md:block fixed z-40 left-0 top-0 bottom-0 ${sidebarCollapsed ? 'w-16' : 'w-72'} bg-gradient-to-b from-white/90 to-slate-50/90 dark:from-slate-900/80 dark:to-slate-800/70 backdrop-blur-md border-r border-slate-200/80 dark:border-white/10`}>
+      <div className={`hidden md:block fixed z-40 left-0 top-[56px] bottom-0 ${sidebarCollapsed ? 'w-16' : 'w-64'} bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 transition-[width] duration-200`}>
         <div className="p-3 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between">
-          {!sidebarCollapsed && <div className="font-bold text-slate-800 dark:text-slate-100">Conversations</div>}
+          {!sidebarCollapsed && <div className="font-semibold text-slate-700 dark:text-slate-200">Conversations</div>}
           {!sidebarCollapsed && (
             <div className="flex items-center gap-2">
-              <button onClick={newChat} className="btn-primary px-3 py-1.5 rounded-xl">+ New</button>
-              <Link to="/settings" title="Settings" className="w-9 h-9 inline-flex items-center justify-center rounded-full bg-white/70 dark:bg-white/10 border border-slate-200/60 dark:border-white/10 hover:bg-white/90 dark:hover:bg-white/15 text-slate-700 dark:text-slate-200"><IconGear className="w-4 h-4"/></Link>
-              <button onClick={() => setSidebarCollapsed(true)} className="w-9 h-9 inline-flex items-center justify-center rounded-full bg-white/70 dark:bg-white/10 border border-slate-200/60 dark:border-white/10 hover:bg-white/90 dark:hover:bg-white/15 text-slate-700 dark:text-slate-200"><IconChevronLeft className="w-4 h-4"/></button>
+              <button onClick={newChat} title="New chat" className="w-9 h-9 inline-flex items-center justify-center rounded-full border border-slate-200 dark:border-white/10 bg-white dark:bg-white/10 hover:bg-slate-50 dark:hover:bg-white/15"><IconPlus className="w-4 h-4"/></button>
+              <Link to="/settings" title="Settings" className="w-9 h-9 inline-flex items-center justify-center rounded-full border border-slate-200 dark:border-white/10 bg-white dark:bg-white/10 hover:bg-slate-50 dark:hover:bg-white/15"><IconGear className="w-4 h-4"/></Link>
+              <button onClick={() => setSidebarCollapsed(true)} title="Collapse" className="w-9 h-9 inline-flex items-center justify-center rounded-full border border-slate-200 dark:border-white/10 bg-white dark:bg-white/10 hover:bg-slate-50 dark:hover:bg-white/15"><IconChevronLeft className="w-4 h-4"/></button>
             </div>
           )}
         </div>
@@ -230,17 +230,18 @@ export default function Chat() {
               <button onClick={()=> setSidebarCollapsed(false)} title="Expand" className="w-9 h-9 inline-flex items-center justify-center rounded-full bg-white/70 dark:bg-white/10 border border-slate-200/60 dark:border-white/10 hover:bg-white/90 dark:hover:bg-white/15 text-slate-700 dark:text-slate-200"><IconChevronRight className="w-4 h-4"/></button>
             </div>
           )}
+          {/* removed extra text row to avoid clutter; collapse handled by header icon */}
           {!sidebarCollapsed && sessionList.map(s => (
-              <div key={s.id} className={`group relative w-full text-left p-3 rounded-lg text-slate-800 dark:text-slate-100 ${sessionId===s.id ? 'bg-slate-100 dark:bg-slate-700/60' : 'hover:bg-slate-100 dark:hover:bg-slate-700/60'}`}>
+              <div key={s.id} className={`group relative w-full text-left p-3 rounded-xl ${sessionId===s.id ? 'bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700' : 'hover:bg-slate-50 dark:hover:bg-slate-800/60'}`}>
                 <button onClick={() => openSession(s.id)} className="block w-[calc(100%-36px)] text-left">
                   <div className="font-semibold truncate">{s.title || 'Untitled chat'}</div>
                   <div className="text-xs text-slate-500 truncate">{new Date(s.updatedAt || s.createdAt).toLocaleString()}</div>
                 </button>
-                <button onClick={(e)=>{e.stopPropagation(); setMenuSessionId(prev => prev===s.id ? '' : s.id);}} aria-label="More" className="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-md text-slate-500 dark:text-slate-200 hover:bg-slate-200/40 dark:hover:bg-white/10 flex items-center justify-center">
+                <button onClick={(e)=>{e.stopPropagation(); setMenuSessionId(prev => prev===s.id ? '' : s.id);}} aria-label="More" className="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-md hover:bg-slate-100 dark:hover:bg-white/10 flex items-center justify-center">
                   <IconKebab className="w-4 h-4"/>
                 </button>
                 {menuSessionId===s.id && (
-                  <div onClick={e=>e.stopPropagation()} className="absolute z-50 right-2 top-10 w-44 rounded-lg border border-slate-200 bg-white dark:bg-slate-800 shadow-lg py-1">
+                  <div onClick={e=>e.stopPropagation()} className="absolute z-50 right-2 top-10 w-44 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 shadow-lg py-1">
                     <button onClick={()=>{ const name=prompt('Rename chat', s.title||''); if(name!==null){ renameSession(s.id,name.trim()||'Untitled chat'); refreshSessions(); setMenuSessionId(''); } }} className="w-full text-left px-3 py-2 hover:bg-slate-100 dark:hover:bg-slate-700">Rename</button>
                     <button onClick={()=>{ if(confirm('Delete this chat?')){ deleteSession(s.id); refreshSessions(); setMenuSessionId(''); if(sessionId===s.id){ setSessionId(''); setMessages([]); } } }} className="w-full text-left px-3 py-2 text-red-600 hover:bg-slate-100 dark:hover:bg-slate-700">Delete</button>
                   </div>
@@ -252,11 +253,11 @@ export default function Chat() {
       </div>
 
       {/* Mobile rail + drawer */}
-      <div className="md:hidden fixed left-0 top-0 bottom-0 w-12 z-30 flex flex-col items-center gap-3 pt-3 bg-transparent">
-        <button onClick={() => { setSidebarOpen(true); refreshSessions(); }} className="w-10 h-10 inline-flex items-center justify-center rounded-lg border border-slate-200 bg-white shadow-sm"><IconMenu className="w-5 h-5"/></button>
+      <div className="md:hidden fixed left-0 top-[56px] bottom-0 w-12 z-30 flex flex-col items-center gap-3 pt-3 bg-transparent">
+        <button onClick={() => { setSidebarOpen(true); refreshSessions(); }} className="w-10 h-10 inline-flex items-center justify-center rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 shadow-sm"><IconMenu className="w-5 h-5"/></button>
       </div>
 
-      <div className={`${sidebarOpen ? 'translate-x-0' : '-translate-x-full'} md:hidden fixed z-40 left-0 top-0 bottom-0 w-72 bg-gradient-to-b from-white/95 to-slate-50/95 dark:from-slate-900/90 dark:to-slate-800/80 backdrop-blur-md border-r border-slate-200/80 dark:border-white/10 transition-transform`}>
+      <div className={`${sidebarOpen ? 'translate-x-0' : '-translate-x-full'} md:hidden fixed z-40 left-0 top-[56px] bottom-0 w-72 bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 transition-transform`}>
         <div className="p-3 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between">
           <div className="font-bold text-slate-800 dark:text-slate-100">Conversations</div>
           <button onClick={() => setSidebarOpen(false)} className="w-9 h-9 inline-flex items-center justify-center rounded-full bg-white/70 dark:bg-white/10 border border-slate-200/60 dark:border-white/10 hover:bg-white/90 dark:hover:bg-white/15 text-slate-700 dark:text-slate-200">×</button>
@@ -291,7 +292,7 @@ export default function Chat() {
       {sidebarOpen && (<div onClick={() => setSidebarOpen(false)} className="md:hidden fixed z-30 top-0 left-0 right-0 bottom-0 bg-black/20"/>) }
 
       {/* Chat content area */}
-      <div className="max-w-[1200px] mx-auto px-[clamp(16px,5vw,40px)] py-4 h-full flex flex-col">
+      <div className="max-w-[1200px] mx-auto px-[clamp(16px,5vw,40px)] py-6 h-full flex flex-col">
         <div className="flex items-center justify-between gap-3 mb-3">
           <div className="flex items-center gap-3">
             <div className="relative">
@@ -307,31 +308,13 @@ export default function Chat() {
           </div>
         </div>
 
-        <div className="rounded-[20px] bg-white dark:bg-slate-900/40 border border-slate-200 dark:border-slate-800 shadow-[0_12px_40px_rgba(2,6,23,.06)] mb-3">
-          <div ref={containerRef} className="flex-1 min-h-0 overflow-y-auto p-5">
+        <div className="rounded-2xl bg-white dark:bg-slate-900/40 border border-slate-200 dark:border-slate-800 shadow-[0_12px_40px_rgba(2,6,23,.06)] mb-4">
+          <div ref={containerRef} className="flex-1 min-h-0 overflow-y-auto p-6">
             {messages.length === 0 || !messages.some(m => m.sender === 'You') ? (
               <div className="min-h-[50vh] flex items-center justify-center">
                 <div className="w-full max-w-[520px] mx-auto">
-                  <div className="flex items-center justify-center mb-5">
-                    <div className="w-10 h-10 rounded-full bg-yellow-400 shadow-[0_8px_24px_rgba(250,204,21,.35)]"></div>
-                  </div>
                   <h2 className="text-center text-xl font-extrabold mb-2">welcome</h2>
-                  <div className="space-y-3">
-                    <button disabled={!recognition} onClick={() => { if (!recognition || isProcessing) return; recognition.start(); setListeningStatus('Recording...'); if (startBtnRef.current) startBtnRef.current.disabled = true; }} className={`w-full text-left px-4 py-3 rounded-2xl border ${recognition ? 'bg-white hover:shadow-sm' : 'bg-white/70'} border-slate-200 flex items-center justify-between`}>
-                      <div>
-                        <div className="font-semibold">voice mode</div>
-                        <div className="text-sm text-slate-500">speak your question</div>
-                      </div>
-                      {!recognition && <IconLock className="w-5 h-5 text-slate-400"/>}
-                    </button>
-                    <button onClick={() => { if (inputRef.current) inputRef.current.focus(); }} className="w-full text-left px-4 py-3 rounded-2xl border bg-white hover:shadow-sm border-slate-200 flex items-center justify-between">
-                      <div>
-                        <div className="font-semibold">text mode</div>
-                        <div className="text-sm text-slate-500">not in the talking mood?</div>
-                      </div>
-                      <IconChevronRight className="w-5 h-5 text-slate-400"/>
-                    </button>
-                  </div>
+                  
                 </div>
               </div>
             ) : null}
