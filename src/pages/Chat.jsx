@@ -190,10 +190,13 @@ export default function Chat() {
     let fullText = '';
 
     try {
+      // Capture history before the user message we just appended
+      const historySnapshot = messages.filter(m => m.content && !m.typing);
+
       const res = await fetch(`${API_BASE}/ask`, {
         method: 'POST',
         headers,
-        body: JSON.stringify({ userMessage: content }),
+        body: JSON.stringify({ userMessage: content, history: historySnapshot }),
         signal: controller.signal,
       });
 
