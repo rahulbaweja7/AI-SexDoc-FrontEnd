@@ -154,14 +154,38 @@ export default function Chat() {
 
   function refreshSessions() { setSessionList(getAllSessions()); }
   function appendMessage(sender, content) { setMessages(prev => [...prev, { sender, content }]); }
-  function playVoice(text) {
+  const audioRef = useRef(null);
+
+  function stopVoice() {
+    speechSynthesis.cancel();
+    if (audioRef.current) { audioRef.current.pause(); audioRef.current = null; }
+  }
+
+  async function playVoice(text) {
     if ((localStorage.getItem('sera.voiceEnabled') ?? '1') !== '1') return;
-    const utter = new SpeechSynthesisUtterance(text);
-    if (preferredVoice) utter.voice = preferredVoice;
-    utter.rate = 0.95;
-    utter.pitch = 1.0;
-    utter.volume = 1.0;
-    speechSynthesis.cancel(); speechSynthesis.speak(utter);
+    stopVoice();
+    try {
+      const headers = { 'Content-Type': 'application/json' };
+      if (token) headers['Authorization'] = `Bearer ${token}`;
+      const res = await fetch(`${API_BASE}/tts`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({ text }),
+      });
+      if (!res.ok) throw new Error('TTS unavailable');
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const audio = new Audio(url);
+      audioRef.current = audio;
+      audio.onended = () => URL.revokeObjectURL(url);
+      audio.play();
+    } catch {
+      // Fallback to browser TTS if ElevenLabs unavailable
+      const utter = new SpeechSynthesisUtterance(text);
+      if (preferredVoice) utter.voice = preferredVoice;
+      utter.rate = 0.95;
+      speechSynthesis.speak(utter);
+    }
   }
   function persistHistory(entry) {
     try { const list = JSON.parse(localStorage.getItem('sera.localHistory') || '[]'); list.push(entry); localStorage.setItem('sera.localHistory', JSON.stringify(list.slice(-200))); } catch {}
@@ -294,7 +318,7 @@ export default function Chat() {
 
   function stopAll() {
     setIsTypingStopped(true);
-    speechSynthesis.cancel();
+    stopVoice();
     clearTypingInterval();
     if (abortControllerRef.current) abortControllerRef.current.abort();
     if (recognition) recognition.stop();
