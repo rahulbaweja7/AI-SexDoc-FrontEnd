@@ -349,16 +349,22 @@ export default function Chat() {
         const headers = { 'Content-Type': 'application/json' };
         if (token) headers['Authorization'] = `Bearer ${token}`;
         const voice = localStorage.getItem('sera.voiceGender') || 'female';
-        const res = await fetch(`${API_BASE}/tts`, { method: 'POST', headers, body: JSON.stringify({ text, voice }) });
-        if (!res.ok) throw new Error('TTS failed');
+        console.log('[TTS] calling', API_BASE + '/tts', { voice });
+        const res = await fetch(`${API_BASE}/tts`, { method: 'POST', headers, body: JSON.stringify({ text: text.slice(0, 500), voice }) });
+        if (!res.ok) {
+          const errBody = await res.text();
+          throw new Error(`TTS ${res.status}: ${errBody}`);
+        }
         const blob = await res.blob();
+        console.log('[TTS] got blob', blob.type, blob.size, 'bytes');
         const url = URL.createObjectURL(blob);
         const audio = new Audio(url);
         talkAudioRef.current = audio;
         audio.onended = () => { URL.revokeObjectURL(url); talkAudioRef.current = null; resolve(); };
-        audio.onerror = () => resolve();
+        audio.onerror = (e) => { console.error('[TTS] audio error', e); resolve(); };
         audio.play();
-      } catch {
+      } catch (err) {
+        console.error('[TTS] failed, falling back to browser TTS:', err.message);
         const utter = new SpeechSynthesisUtterance(text);
         if (preferredVoice) utter.voice = preferredVoice;
         utter.rate = 0.95;
