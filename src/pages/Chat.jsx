@@ -197,10 +197,13 @@ export default function Chat() {
       // Capture history before the user message we just appended
       const historySnapshot = messages.filter(m => m.content && !m.typing);
 
+      // Read onboarding profile
+      const profile = (() => { try { return JSON.parse(localStorage.getItem('sera.onboarding') || '{}'); } catch { return {}; } })();
+
       const res = await fetch(`${API_BASE}/ask`, {
         method: 'POST',
         headers,
-        body: JSON.stringify({ userMessage: content, history: historySnapshot }),
+        body: JSON.stringify({ userMessage: content, history: historySnapshot, profile }),
         signal: controller.signal,
       });
 
