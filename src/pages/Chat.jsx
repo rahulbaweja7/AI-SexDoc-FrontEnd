@@ -80,8 +80,8 @@ export default function Chat() {
   const isComposingRef = useRef(false);
   const containerRef = useRef(null);
   const greetedRef = useRef(false);
-  const userScrolledUpRef = useRef(false);
-  const isProgrammaticScrollRef = useRef(false);
+  const forceScrollRef = useRef(false);
+  const skipNextSessionLoadRef = useRef(false);
 
   const [messages, setMessages] = useState([]);
   const [text, setText] = useState('');
@@ -94,25 +94,19 @@ export default function Chat() {
 
   useEffect(() => { isTypingStoppedRef.current = isTypingStopped; }, [isTypingStopped]);
 
-  // Track if user manually scrolled up (ignore programmatic scrolls)
+  // Auto-scroll: if force-scrolling (after send), always scroll. Otherwise only scroll if already near bottom.
   useEffect(() => {
     const el = containerRef.current;
     if (!el) return;
-    const onScroll = () => {
-      if (isProgrammaticScrollRef.current) return;
-      userScrolledUpRef.current = el.scrollHeight - el.scrollTop - el.clientHeight > 80;
-    };
-    el.addEventListener('scroll', onScroll, { passive: true });
-    return () => el.removeEventListener('scroll', onScroll);
-  }, []);
-
-  // Auto-scroll only if user hasn't scrolled up
-  useEffect(() => {
-    const el = containerRef.current;
-    if (!el || userScrolledUpRef.current) return;
-    isProgrammaticScrollRef.current = true;
-    el.scrollTop = el.scrollHeight;
-    setTimeout(() => { isProgrammaticScrollRef.current = false; }, 50);
+    if (forceScrollRef.current) {
+      el.scrollTop = el.scrollHeight;
+      forceScrollRef.current = false;
+      return;
+    }
+    const distFromBottom = el.scrollHeight - el.scrollTop - el.clientHeight;
+    if (distFromBottom < 120) {
+      el.scrollTop = el.scrollHeight;
+    }
   }, [messages]);
 
   const onboardingDone = typeof window !== 'undefined' && localStorage.getItem('sera.onboardingComplete') === '1';
@@ -134,7 +128,12 @@ export default function Chat() {
     };
   }, [recognition]);
 
-  useEffect(() => { if (!sessionId) return; const s = getSession(sessionId); if (s?.messages.length) { setMessages(s.messages); greetedRef.current = true; } }, [sessionId]);
+  useEffect(() => {
+    if (!sessionId) return;
+    if (skipNextSessionLoadRef.current) { skipNextSessionLoadRef.current = false; return; }
+    const s = getSession(sessionId);
+    if (s?.messages.length) { setMessages(s.messages); greetedRef.current = true; }
+  }, [sessionId]);
   useEffect(() => { refreshSessions(); }, []);
   useEffect(() => {
     const close = () => setMenuSessionId('');
@@ -159,7 +158,9 @@ export default function Chat() {
     if ((localStorage.getItem('sera.voiceEnabled') ?? '1') !== '1') return;
     const utter = new SpeechSynthesisUtterance(text);
     if (preferredVoice) utter.voice = preferredVoice;
-    utter.rate = 1; utter.pitch = 1.05;
+    utter.rate = 0.95;
+    utter.pitch = 1.0;
+    utter.volume = 1.0;
     speechSynthesis.cancel(); speechSynthesis.speak(utter);
   }
   function persistHistory(entry) {
@@ -170,7 +171,7 @@ export default function Chat() {
 
   async function sendToBot(content) {
     setListeningStatus('');
-    userScrolledUpRef.current = false; // always scroll down when sending
+    forceScrollRef.current = true; // force scroll to bottom when user sends
     appendMessage('You', content);
     setIsTypingStopped(false);
     clearTypingInterval();
@@ -181,6 +182,7 @@ export default function Chat() {
     if (!currentSessionId) {
       const s = createSession(content.slice(0, 50) || 'New chat');
       currentSessionId = s.id;
+      skipNextSessionLoadRef.current = true;
       setSessionId(s.id);
       navigate(`/chat?session=${encodeURIComponent(s.id)}`);
       refreshSessions();
@@ -586,7 +588,18 @@ function usePreferredVoice() {
   useEffect(() => {
     function pick() {
       const voices = speechSynthesis.getVoices();
-      setVoice(voices.find(v => v.name?.includes('Samantha') || v.name?.includes('Zira')) || voices.find(v => v.lang?.includes('en')) || null);
+      const en = voices.filter(v => v.lang?.startsWith('en'));
+      // Priority: Premium > Enhanced > Natural/Online > known-good names > any English
+      const preferred = (
+        en.find(v => v.name?.includes('Premium')) ||
+        en.find(v => v.name?.includes('Enhanced')) ||
+        en.find(v => v.name?.includes('Natural')) ||
+        en.find(v => v.name?.includes('Online')) ||
+        en.find(v => /Ava|Allison|Jenny|Aria|Libby|Samantha/.test(v.name)) ||
+        en[0] ||
+        null
+      );
+      setVoice(preferred);
     }
     window.speechSynthesis.onvoiceschanged = pick;
     pick();
