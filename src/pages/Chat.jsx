@@ -694,15 +694,6 @@ export default function Chat() {
               />
               <div className="flex items-center gap-1 pb-0.5 flex-shrink-0">
                 <button
-                  onClick={enterTalkMode}
-                  title="Talk mode"
-                  className="w-8 h-8 flex items-center justify-center rounded-xl text-zinc-400 hover:text-[#ff6b6b] hover:bg-[#ff6b6b]/10 transition-colors"
-                >
-                  <svg viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4">
-                    <path d="M6.62 10.79c1.44 2.83 3.76 5.14 6.59 6.59l2.2-2.2c.27-.27.67-.36 1.02-.24 1.12.37 2.33.57 3.57.57.55 0 1 .45 1 1V20c0 .55-.45 1-1 1-9.39 0-17-7.61-17-17 0-.55.45-1 1-1h3.5c.55 0 1 .45 1 1 0 1.25.2 2.45.57 3.57.11.35.03.74-.25 1.02l-2.2 2.2z"/>
-                  </svg>
-                </button>
-                <button
                   ref={startBtnRef}
                   onClick={() => { if (!recognition || isProcessing) return; recognition.start(); setListeningStatus('Listening…'); if (startBtnRef.current) startBtnRef.current.disabled = true; }}
                   title="Voice input"
@@ -726,9 +717,24 @@ export default function Chat() {
                 )}
               </div>
             </div>
-            <p className="text-center text-[11px] text-zinc-400 dark:text-zinc-600 mt-2">
-              SERA can make mistakes. For medical concerns, consult a professional.
-            </p>
+            <div className="flex items-center justify-between mt-2.5 px-1">
+              <p className="text-[11px] text-zinc-400 dark:text-zinc-600">
+                SERA can make mistakes. For medical concerns, consult a professional.
+              </p>
+              <button
+                onClick={enterTalkMode}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[#ff6b6b]/10 border border-[#ff6b6b]/25 text-[#ff6b6b] text-[12px] font-medium hover:bg-[#ff6b6b]/20 transition-colors flex-shrink-0 ml-3"
+              >
+                <svg viewBox="0 0 20 20" fill="currentColor" className="w-3.5 h-3.5">
+                  <rect x="1" y="8"  width="2.5" height="4"  rx="1.25"/>
+                  <rect x="5" y="5"  width="2.5" height="10" rx="1.25"/>
+                  <rect x="9" y="6.5" width="2.5" height="7" rx="1.25"/>
+                  <rect x="13" y="3" width="2.5" height="14" rx="1.25"/>
+                  <rect x="17" y="6" width="2.5" height="8"  rx="1.25"/>
+                </svg>
+                Talk
+              </button>
+            </div>
           </div>
         </div>
       </div>
