@@ -5,6 +5,7 @@ import NavBar from './components/NavBar.jsx';
 export default function App() {
   const location = useLocation();
   const isChat = location.pathname.startsWith('/chat');
+  const isFullScreen = isChat || location.pathname === '/login' || location.pathname === '/onboarding';
 
   useEffect(() => {
     try {
@@ -15,8 +16,8 @@ export default function App() {
 
   return (
     <div className="min-h-screen">
-      {!isChat && <NavBar />}
-      <main className={isChat ? '' : 'pt-14'}>
+      {!isFullScreen && <NavBar />}
+      <main className={isFullScreen ? '' : 'pt-14'}>
         <Outlet key={location.pathname} />
       </main>
     </div>
