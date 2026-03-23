@@ -291,7 +291,6 @@ export default function Chat() {
       });
 
       if (fullText) {
-        playVoice(fullText);
         const entry = { timestamp: startedAt, userMessage: content, reply: fullText };
         persistHistory(entry);
         addMessageToSession(currentSessionId, { sender: 'SERA', content: fullText, timestamp: Date.now() });
@@ -349,7 +348,8 @@ export default function Chat() {
       try {
         const headers = { 'Content-Type': 'application/json' };
         if (token) headers['Authorization'] = `Bearer ${token}`;
-        const res = await fetch(`${API_BASE}/tts`, { method: 'POST', headers, body: JSON.stringify({ text }) });
+        const voice = localStorage.getItem('sera.voiceGender') || 'female';
+        const res = await fetch(`${API_BASE}/tts`, { method: 'POST', headers, body: JSON.stringify({ text, voice }) });
         if (!res.ok) throw new Error('TTS failed');
         const blob = await res.blob();
         const url = URL.createObjectURL(blob);

@@ -62,6 +62,7 @@ export default function Settings() {
   const [theme, setTheme] = useState(() => localStorage.getItem('sera.theme') || 'light');
   const [enterToSend, setEnterToSend] = useState(() => (localStorage.getItem('sera.enterToSend') ?? '1') === '1');
   const [voiceEnabled, setVoiceEnabled] = useState(() => (localStorage.getItem('sera.voiceEnabled') ?? '1') === '1');
+  const [voiceGender, setVoiceGender] = useState(() => localStorage.getItem('sera.voiceGender') || 'female');
   const [typingSpeed, setTypingSpeed] = useState(() => parseInt(localStorage.getItem('sera.typingSpeedMs') || '18', 10));
   const [sidebarCollapsed, setSidebarCollapsed] = useState(() => (localStorage.getItem('sera.sidebarCollapsedDefault') ?? '0') === '1');
   const [toast, setToast] = useState('');
@@ -78,6 +79,7 @@ export default function Settings() {
 
   useEffect(() => { localStorage.setItem('sera.enterToSend', enterToSend ? '1' : '0'); }, [enterToSend]);
   useEffect(() => { localStorage.setItem('sera.voiceEnabled', voiceEnabled ? '1' : '0'); }, [voiceEnabled]);
+  useEffect(() => { localStorage.setItem('sera.voiceGender', voiceGender); }, [voiceGender]);
   useEffect(() => { localStorage.setItem('sera.typingSpeedMs', String(typingSpeed)); }, [typingSpeed]);
   useEffect(() => { localStorage.setItem('sera.sidebarCollapsedDefault', sidebarCollapsed ? '1' : '0'); }, [sidebarCollapsed]);
 
@@ -160,8 +162,25 @@ export default function Settings() {
             <Row label="Enter to send" desc="Press Enter to send, Shift+Enter for new line">
               <Toggle checked={enterToSend} onChange={setEnterToSend} />
             </Row>
-            <Row label="Voice replies" desc="Have SERA read responses aloud">
+            <Row label="Voice replies" desc="Have SERA read responses aloud in talk mode">
               <Toggle checked={voiceEnabled} onChange={setVoiceEnabled} />
+            </Row>
+            <Row label="SERA's voice" desc="Choose the voice used in talk mode">
+              <div className="flex items-center gap-1 p-1 rounded-xl bg-zinc-100 dark:bg-zinc-800">
+                {['female', 'male'].map(g => (
+                  <button
+                    key={g}
+                    onClick={() => setVoiceGender(g)}
+                    className={`px-4 py-1.5 rounded-lg text-[13px] font-medium capitalize transition-all ${
+                      voiceGender === g
+                        ? 'bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white shadow-sm'
+                        : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-300'
+                    }`}
+                  >
+                    {g}
+                  </button>
+                ))}
+              </div>
             </Row>
             <Row label="Collapse sidebar by default" desc="Show compact rail when opening chat">
               <Toggle checked={sidebarCollapsed} onChange={setSidebarCollapsed} />
