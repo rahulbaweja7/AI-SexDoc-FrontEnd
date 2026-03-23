@@ -83,6 +83,14 @@ export default function Chat() {
   const forceScrollRef = useRef(false);
   const skipNextSessionLoadRef = useRef(false);
 
+  // Talk mode
+  const [talkMode, setTalkMode] = useState(false);
+  const [talkStatus, setTalkStatus] = useState('idle'); // 'listening' | 'thinking' | 'speaking'
+  const [talkTranscript, setTalkTranscript] = useState('');
+  const talkActiveRef = useRef(false);
+  const talkAudioRef = useRef(null);
+  const messagesRef = useRef([]);
+
   const [messages, setMessages] = useState([]);
   const [text, setText] = useState('');
   const [listeningStatus, setListeningStatus] = useState('');
@@ -93,6 +101,7 @@ export default function Chat() {
   const [menuSessionId, setMenuSessionId] = useState('');
 
   useEffect(() => { isTypingStoppedRef.current = isTypingStopped; }, [isTypingStopped]);
+  useEffect(() => { messagesRef.current = messages; }, [messages]);
 
   // Auto-scroll: if force-scrolling (after send), always scroll. Otherwise only scroll if already near bottom.
   useEffect(() => {
@@ -314,6 +323,116 @@ export default function Chat() {
       setIsProcessing(false);
       if (startBtnRef.current) startBtnRef.current.disabled = false;
     }
+  }
+
+  /* ── Talk mode ── */
+  function listenOnce() {
+    return new Promise((resolve, reject) => {
+      const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+      if (!SR) { reject(new Error('Speech recognition not supported')); return; }
+      const r = new SR();
+      r.lang = 'en-US';
+      r.interimResults = true;
+      let interim = '';
+      r.onresult = e => {
+        interim = Array.from(e.results).map(res => res[0].transcript).join('');
+        setTalkTranscript(interim);
+      };
+      r.onerror = e => { if (e.error === 'no-speech') resolve(''); else reject(e.error); };
+      r.onend = () => resolve(interim.trim());
+      r.start();
+    });
+  }
+
+  async function speakTalk(text) {
+    return new Promise(async (resolve) => {
+      try {
+        const headers = { 'Content-Type': 'application/json' };
+        if (token) headers['Authorization'] = `Bearer ${token}`;
+        const res = await fetch(`${API_BASE}/tts`, { method: 'POST', headers, body: JSON.stringify({ text }) });
+        if (!res.ok) throw new Error('TTS failed');
+        const blob = await res.blob();
+        const url = URL.createObjectURL(blob);
+        const audio = new Audio(url);
+        talkAudioRef.current = audio;
+        audio.onended = () => { URL.revokeObjectURL(url); talkAudioRef.current = null; resolve(); };
+        audio.onerror = () => resolve();
+        audio.play();
+      } catch {
+        const utter = new SpeechSynthesisUtterance(text);
+        if (preferredVoice) utter.voice = preferredVoice;
+        utter.rate = 0.95;
+        utter.onend = resolve;
+        speechSynthesis.speak(utter);
+      }
+    });
+  }
+
+  async function runTalkLoop() {
+    while (talkActiveRef.current) {
+      setTalkStatus('listening');
+      setTalkTranscript('');
+      let transcript = '';
+      try { transcript = await listenOnce(); } catch { break; }
+      if (!talkActiveRef.current || !transcript) continue;
+
+      setTalkStatus('thinking');
+      setTalkTranscript('');
+      let responseText = '';
+      try {
+        const headers = { 'Content-Type': 'application/json' };
+        if (token) headers['Authorization'] = `Bearer ${token}`;
+        const profile = (() => { try { return JSON.parse(localStorage.getItem('sera.onboarding') || '{}'); } catch { return {}; } })();
+        const historySnapshot = messagesRef.current.filter(m => m.content && !m.typing);
+        const res = await fetch(`${API_BASE}/ask`, {
+          method: 'POST', headers,
+          body: JSON.stringify({ userMessage: transcript, history: historySnapshot, profile }),
+        });
+        if (!res.ok) throw new Error('Server error');
+        const reader = res.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = '';
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          buffer += decoder.decode(value, { stream: true });
+          const lines = buffer.split('\n');
+          buffer = lines.pop() ?? '';
+          for (const line of lines) {
+            if (!line.startsWith('data: ')) continue;
+            const data = line.slice(6).trim();
+            if (data === '[DONE]') break;
+            try { const p = JSON.parse(data); if (p.token) responseText += p.token; } catch {}
+          }
+        }
+      } catch { break; }
+      if (!talkActiveRef.current || !responseText) continue;
+
+      // Save to chat history
+      setMessages(prev => [...prev, { sender: 'You', content: transcript }, { sender: 'SERA', content: responseText }]);
+
+      setTalkStatus('speaking');
+      await speakTalk(responseText);
+    }
+    exitTalkMode();
+  }
+
+  function enterTalkMode() {
+    stopAll();
+    talkActiveRef.current = true;
+    setTalkMode(true);
+    setTalkStatus('listening');
+    setTalkTranscript('');
+    runTalkLoop();
+  }
+
+  function exitTalkMode() {
+    talkActiveRef.current = false;
+    setTalkMode(false);
+    setTalkStatus('idle');
+    setTalkTranscript('');
+    speechSynthesis.cancel();
+    if (talkAudioRef.current) { talkAudioRef.current.pause(); talkAudioRef.current = null; }
   }
 
   function stopAll() {
@@ -574,6 +693,15 @@ export default function Chat() {
               />
               <div className="flex items-center gap-1 pb-0.5 flex-shrink-0">
                 <button
+                  onClick={enterTalkMode}
+                  title="Talk mode"
+                  className="w-8 h-8 flex items-center justify-center rounded-xl text-zinc-400 hover:text-[#ff6b6b] hover:bg-[#ff6b6b]/10 transition-colors"
+                >
+                  <svg viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4">
+                    <path d="M6.62 10.79c1.44 2.83 3.76 5.14 6.59 6.59l2.2-2.2c.27-.27.67-.36 1.02-.24 1.12.37 2.33.57 3.57.57.55 0 1 .45 1 1V20c0 .55-.45 1-1 1-9.39 0-17-7.61-17-17 0-.55.45-1 1-1h3.5c.55 0 1 .45 1 1 0 1.25.2 2.45.57 3.57.11.35.03.74-.25 1.02l-2.2 2.2z"/>
+                  </svg>
+                </button>
+                <button
                   ref={startBtnRef}
                   onClick={() => { if (!recognition || isProcessing) return; recognition.start(); setListeningStatus('Listening…'); if (startBtnRef.current) startBtnRef.current.disabled = true; }}
                   title="Voice input"
@@ -603,6 +731,83 @@ export default function Chat() {
           </div>
         </div>
       </div>
+    </div>
+
+    {/* Talk mode overlay */}
+    {talkMode && <TalkModeOverlay status={talkStatus} transcript={talkTranscript} onExit={exitTalkMode} />}
+  );
+}
+
+function TalkModeOverlay({ status, transcript, onExit }) {
+  return (
+    <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-[#0a0a0b]">
+
+      {/* Orb */}
+      <div className="relative flex items-center justify-center" style={{ width: 220, height: 220 }}>
+        {status === 'listening' && [1, 2, 3].map(i => (
+          <div key={i} className="absolute rounded-full" style={{
+            width: 96 + i * 44, height: 96 + i * 44,
+            background: 'rgba(255,107,107,0.08)',
+            animation: `talkRipple 2s ease-out ${(i - 1) * 0.5}s infinite`,
+          }} />
+        ))}
+        {status === 'speaking' && [1, 2].map(i => (
+          <div key={i} className="absolute rounded-full" style={{
+            width: 96 + i * 40, height: 96 + i * 40,
+            background: 'rgba(167,139,250,0.08)',
+            animation: `talkPulse 1.4s ease-in-out ${(i - 1) * 0.3}s infinite`,
+          }} />
+        ))}
+        <div className="relative z-10 w-24 h-24 rounded-full" style={{
+          background: status === 'listening'
+            ? 'radial-gradient(circle at 35% 35%, #ff9898, #ff6b6b)'
+            : status === 'speaking'
+            ? 'radial-gradient(circle at 35% 35%, #c4b5fd, #7c3aed)'
+            : 'radial-gradient(circle at 35% 35%, #52525b, #3f3f46)',
+          boxShadow: status === 'listening'
+            ? '0 0 70px rgba(255,107,107,0.45), 0 0 140px rgba(255,107,107,0.12)'
+            : status === 'speaking'
+            ? '0 0 70px rgba(167,139,250,0.45), 0 0 140px rgba(167,139,250,0.12)'
+            : '0 0 30px rgba(255,255,255,0.04)',
+          animation: status === 'thinking' ? 'talkBreathe 2s ease-in-out infinite' : 'none',
+        }} />
+      </div>
+
+      {/* Status */}
+      <p className="mt-6 text-[15px] tracking-wide text-zinc-400">
+        {status === 'listening' ? 'Listening…' : status === 'thinking' ? 'Thinking…' : status === 'speaking' ? 'Speaking…' : ''}
+      </p>
+
+      {/* Live transcript */}
+      <div className="mt-3 h-10 flex items-center justify-center px-10 max-w-sm">
+        {transcript && <p className="text-[13px] text-zinc-600 text-center leading-relaxed">{transcript}</p>}
+      </div>
+
+      {/* End button */}
+      <button
+        onClick={onExit}
+        className="mt-14 flex items-center gap-2.5 px-7 py-3.5 rounded-2xl bg-zinc-800 hover:bg-zinc-700 text-white text-[14px] font-medium transition-colors"
+      >
+        <svg viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4 rotate-[135deg]">
+          <path d="M6.62 10.79c1.44 2.83 3.76 5.14 6.59 6.59l2.2-2.2c.27-.27.67-.36 1.02-.24 1.12.37 2.33.57 3.57.57.55 0 1 .45 1 1V20c0 .55-.45 1-1 1-9.39 0-17-7.61-17-17 0-.55.45-1 1-1h3.5c.55 0 1 .45 1 1 0 1.25.2 2.45.57 3.57.11.35.03.74-.25 1.02l-2.2 2.2z"/>
+        </svg>
+        End conversation
+      </button>
+
+      <style>{`
+        @keyframes talkRipple {
+          0%   { transform: scale(0.85); opacity: 0.7; }
+          100% { transform: scale(1.9);  opacity: 0;   }
+        }
+        @keyframes talkPulse {
+          0%, 100% { transform: scale(1);    opacity: 0.8; }
+          50%       { transform: scale(1.18); opacity: 0.3; }
+        }
+        @keyframes talkBreathe {
+          0%, 100% { transform: scale(1);    opacity: 0.6; }
+          50%       { transform: scale(1.08); opacity: 1;   }
+        }
+      `}</style>
     </div>
   );
 }
