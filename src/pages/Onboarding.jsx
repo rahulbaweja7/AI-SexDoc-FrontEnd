@@ -99,7 +99,7 @@ export default function Onboarding() {
             <input
               autoFocus
               placeholder={step.placeholder}
-              defaultValue={answers[step.key] || ''}
+              value={answers[step.key] || ''}
               onChange={e => setValue(step.key, e.target.value)}
               className="block w-full border-0 border-b-2 border-zinc-200 dark:border-zinc-700 focus:border-zinc-900 dark:focus:border-white outline-none text-[18px] py-3 bg-transparent text-zinc-900 dark:text-white placeholder-zinc-400 dark:placeholder-zinc-600 transition-colors"
             />

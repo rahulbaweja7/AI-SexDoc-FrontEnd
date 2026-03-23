@@ -221,7 +221,7 @@ export default function Settings() {
                   </div>
                 </div>
                 <div className="flex flex-wrap gap-2">
-                  <GhostBtn onClick={() => { localStorage.setItem('sera.onboardingComplete', '0'); navigate('/onboarding'); }}>
+                  <GhostBtn onClick={() => { localStorage.removeItem('sera.onboarding'); localStorage.setItem('sera.onboardingComplete', '0'); navigate('/onboarding'); }}>
                     Re-run onboarding
                   </GhostBtn>
                   <DangerBtn onClick={logout}>Sign out</DangerBtn>
