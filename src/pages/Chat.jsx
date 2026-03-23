@@ -81,6 +81,7 @@ export default function Chat() {
   const containerRef = useRef(null);
   const greetedRef = useRef(false);
   const userScrolledUpRef = useRef(false);
+  const isProgrammaticScrollRef = useRef(false);
 
   const [messages, setMessages] = useState([]);
   const [text, setText] = useState('');
@@ -93,11 +94,12 @@ export default function Chat() {
 
   useEffect(() => { isTypingStoppedRef.current = isTypingStopped; }, [isTypingStopped]);
 
-  // Track if user manually scrolled up
+  // Track if user manually scrolled up (ignore programmatic scrolls)
   useEffect(() => {
     const el = containerRef.current;
     if (!el) return;
     const onScroll = () => {
+      if (isProgrammaticScrollRef.current) return;
       userScrolledUpRef.current = el.scrollHeight - el.scrollTop - el.clientHeight > 80;
     };
     el.addEventListener('scroll', onScroll, { passive: true });
@@ -108,7 +110,9 @@ export default function Chat() {
   useEffect(() => {
     const el = containerRef.current;
     if (!el || userScrolledUpRef.current) return;
+    isProgrammaticScrollRef.current = true;
     el.scrollTop = el.scrollHeight;
+    setTimeout(() => { isProgrammaticScrollRef.current = false; }, 50);
   }, [messages]);
 
   const onboardingDone = typeof window !== 'undefined' && localStorage.getItem('sera.onboardingComplete') === '1';
