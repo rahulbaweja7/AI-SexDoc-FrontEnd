@@ -1,23 +1,24 @@
 @import "tailwindcss";
+@variant dark (&:where(.dark, .dark *));
 
 @source "./index.html";
 @source "./src/**/*.{js,jsx,ts,tsx}";
 
 @layer base {
   :root {
-    --bg: #f7f8ff;
-    --text: #0f172a;
-    --muted: #475569;
-    --primary: #3b82f6;
+    --bg: #f9f9f7;
+    --text: #111110;
+    --muted: #6b7280;
+    --primary: #18181b;
     --accent: #ff6b6b;
     --card: #ffffff;
   }
   .dark {
     color-scheme: dark;
-    --bg: #0b0f1a;
-    --text: #e5e7eb;
-    --muted: #94a3b8;
-    --card: #0f172a;
+    --bg: #0e0e10;
+    --text: #efefed;
+    --muted: #71717a;
+    --card: #141416;
   }
   html, body, #root { height: 100%; }
   body { background: var(--bg); color: var(--text); }
@@ -44,6 +45,7 @@
   .shadow-glow { box-shadow: 0 10px 30px rgba(59,130,246,.25); }
   @keyframes float { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-6px)} }
   .animate-float { animation: float 6s ease-in-out infinite; }
+  @keyframes fadeSlideUp { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
   .brand-orb { position: absolute; width: 360px; height: 360px; border-radius: 999px; background: radial-gradient(circle at 30% 30%, rgba(255,107,107,.25), transparent 60%), radial-gradient(circle at 70% 60%, rgba(59,130,246,.25), transparent 60%); filter: blur(20px); pointer-events: none; }
   .squiggle { background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='8' viewBox='0 0 200 8'%3E%3Cpath d='M0 4 Q20 0 40 4 T80 4 T120 4 T160 4 T200 4' fill='none' stroke='%23ff6b6b' stroke-width='4' stroke-linecap='round'/%3E%3C/svg%3E") center/contain no-repeat; }
 }
