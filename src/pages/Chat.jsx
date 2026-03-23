@@ -144,7 +144,13 @@ export default function Chat() {
   useEffect(() => {
     if (greetedRef.current) return;
     greetedRef.current = true;
-    setMessages(prev => prev.length === 0 ? [{ sender: 'SERA', content: "Hey — I'm SERA. Ask me anything about sexual health, relationships, or your body. No judgment, ever." }] : prev);
+    const profile = (() => { try { return JSON.parse(localStorage.getItem('sera.onboarding') || '{}'); } catch { return {}; } })();
+    const name = profile.name ? ` ${profile.name}` : '';
+    const topicLine = profile.topic && profile.topic !== 'something else'
+      ? ` I know you're here for support with ${profile.topic} — that's exactly what I'm here for.`
+      : " Ask me anything about sexual health, relationships, or your body.";
+    const greeting = `Hey${name}! I'm SERA.${topicLine} No judgment, ever.`;
+    setMessages(prev => prev.length === 0 ? [{ sender: 'SERA', content: greeting }] : prev);
   }, []);
 
   function refreshSessions() { setSessionList(getAllSessions()); }
@@ -301,7 +307,9 @@ export default function Chat() {
     setSessionId(s.id);
     navigate(`/chat?session=${encodeURIComponent(s.id)}`);
     greetedRef.current = true;
-    setMessages([{ sender: 'SERA', content: "New chat — what's on your mind?" }]);
+    const profile = (() => { try { return JSON.parse(localStorage.getItem('sera.onboarding') || '{}'); } catch { return {}; } })();
+    const name = profile.name ? `, ${profile.name}` : '';
+    setMessages([{ sender: 'SERA', content: `New chat — what's on your mind${name}?` }]);
     refreshSessions();
   }
 
