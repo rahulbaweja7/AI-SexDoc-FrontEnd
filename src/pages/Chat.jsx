@@ -509,6 +509,7 @@ export default function Chat() {
   );
 
   return (
+    <>
     <div className="flex h-screen bg-[#f9f9f7] dark:bg-[#0e0e10] overflow-hidden">
 
       {/* ── Desktop sidebar ── */}
@@ -735,6 +736,7 @@ export default function Chat() {
 
     {/* Talk mode overlay */}
     {talkMode && <TalkModeOverlay status={talkStatus} transcript={talkTranscript} onExit={exitTalkMode} />}
+    </>
   );
 }
 
