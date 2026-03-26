@@ -83,6 +83,8 @@ export default function Chat() {
   const forceScrollRef = useRef(false);
   const skipNextSessionLoadRef = useRef(false);
 
+  const [ratings, setRatings] = useState({});
+
   // Talk mode
   const [talkMode, setTalkMode] = useState(false);
   const [talkStatus, setTalkStatus] = useState('idle'); // 'listening' | 'thinking' | 'speaking'
@@ -684,7 +686,21 @@ export default function Chat() {
                       )}
                     </div>
                     {!isUser && m.content && !m.typing && (
-                      <CopyButton text={m.content} />
+                      <div className="flex items-center gap-1">
+                        <CopyButton text={m.content} />
+                        <button
+                          onClick={() => setRatings(r => ({ ...r, [idx]: r[idx] === 'up' ? null : 'up' }))}
+                          className={`opacity-0 group-hover/msg:opacity-100 transition-opacity p-1 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-700 ${ratings[idx] === 'up' ? '!opacity-100 text-emerald-500' : 'text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300'}`}
+                        >
+                          <svg viewBox="0 0 24 24" fill={ratings[idx] === 'up' ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="1.8" className="w-3.5 h-3.5" strokeLinecap="round" strokeLinejoin="round"><path d="M14 9V5a3 3 0 00-3-3l-4 9v11h11.28a2 2 0 002-1.7l1.38-9a2 2 0 00-2-2.3H14z"/><path d="M7 22H4a2 2 0 01-2-2v-7a2 2 0 012-2h3"/></svg>
+                        </button>
+                        <button
+                          onClick={() => setRatings(r => ({ ...r, [idx]: r[idx] === 'down' ? null : 'down' }))}
+                          className={`opacity-0 group-hover/msg:opacity-100 transition-opacity p-1 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-700 ${ratings[idx] === 'down' ? '!opacity-100 text-red-400' : 'text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300'}`}
+                        >
+                          <svg viewBox="0 0 24 24" fill={ratings[idx] === 'down' ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="1.8" className="w-3.5 h-3.5" strokeLinecap="round" strokeLinejoin="round"><path d="M10 15v4a3 3 0 003 3l4-9V2H5.72a2 2 0 00-2 1.7l-1.38 9a2 2 0 002 2.3H10z"/><path d="M17 2h2.67A2.31 2.31 0 0122 4v7a2.31 2.31 0 01-2.33 2H17"/></svg>
+                        </button>
+                      </div>
                     )}
                   </div>
                 </div>
