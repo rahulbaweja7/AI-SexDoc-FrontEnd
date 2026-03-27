@@ -84,6 +84,7 @@ export default function Chat() {
   const skipNextSessionLoadRef = useRef(false);
 
   const [ratings, setRatings] = useState({});
+  const [sidebarSearch, setSidebarSearch] = useState('');
 
   // Talk mode
   const [talkMode, setTalkMode] = useState(false);
@@ -496,16 +497,33 @@ export default function Chat() {
   }
 
   /* ── Sidebar session list ── */
+  const filteredSessions = sidebarSearch.trim()
+    ? sessionList.filter(s => {
+        const q = sidebarSearch.toLowerCase();
+        if ((s.title || '').toLowerCase().includes(q)) return true;
+        return (s.messages || []).some(m => m.content?.toLowerCase().includes(q));
+      })
+    : sessionList;
+
+  function highlight(text, query) {
+    if (!query.trim()) return text;
+    const idx = text.toLowerCase().indexOf(query.toLowerCase());
+    if (idx === -1) return text;
+    return <>{text.slice(0, idx)}<mark className="bg-yellow-200 dark:bg-yellow-700/60 text-inherit rounded-sm">{text.slice(idx, idx + query.length)}</mark>{text.slice(idx + query.length)}</>;
+  }
+
   const SessionList = () => (
     <div className="flex-1 overflow-y-auto py-2 px-2 space-y-px">
-      {sessionList.length === 0 && (
-        <p className="text-[12px] text-zinc-400 dark:text-zinc-600 px-3 py-6 text-center">No chats yet</p>
+      {filteredSessions.length === 0 && (
+        <p className="text-[12px] text-zinc-400 dark:text-zinc-600 px-3 py-6 text-center">
+          {sidebarSearch ? 'No results' : 'No chats yet'}
+        </p>
       )}
-      {sessionList.map(s => (
+      {filteredSessions.map(s => (
         <div key={s.id} className={`group relative rounded-xl transition-colors ${sessionId === s.id ? 'bg-zinc-100 dark:bg-zinc-800' : 'hover:bg-zinc-50 dark:hover:bg-zinc-800/50'}`}>
           <button onClick={() => openSession(s.id)} className="w-[calc(100%-28px)] text-left px-3 py-2.5 block">
             <p className={`text-[13px] font-medium truncate leading-tight ${sessionId === s.id ? 'text-zinc-900 dark:text-white' : 'text-zinc-700 dark:text-zinc-300'}`}>
-              {s.title || 'Untitled'}
+              {highlight(s.title || 'Untitled', sidebarSearch)}
             </p>
             <p className="text-[11px] text-zinc-400 dark:text-zinc-600 mt-0.5">
               {new Date(s.updatedAt || s.createdAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
@@ -564,6 +582,25 @@ export default function Chat() {
               </div>
             </div>
 
+            {/* Search */}
+            <div className="px-3 pb-2">
+              <div className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg bg-zinc-200/60 dark:bg-zinc-700/50">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="w-3 h-3 text-zinc-400 flex-shrink-0" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
+                <input
+                  type="text"
+                  value={sidebarSearch}
+                  onChange={e => setSidebarSearch(e.target.value)}
+                  placeholder="Search chats…"
+                  className="flex-1 bg-transparent text-[12px] text-zinc-700 dark:text-zinc-200 placeholder-zinc-400 dark:placeholder-zinc-500 outline-none"
+                />
+                {sidebarSearch && (
+                  <button onClick={() => setSidebarSearch('')} className="text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-3 h-3" strokeLinecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
+                  </button>
+                )}
+              </div>
+            </div>
+
             <SessionList />
 
             {/* Sidebar footer */}
@@ -594,10 +631,25 @@ export default function Chat() {
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="w-4 h-4" strokeLinecap="round"><path d="M18 6L6 18M6 6l12 12" /></svg>
           </button>
         </div>
-        <div className="px-3 pt-3 pb-2">
+        <div className="px-3 pt-3 pb-2 space-y-2">
           <button onClick={() => { newChat(); setSidebarOpen(false); }} className="w-full flex items-center gap-2 px-3 py-2.5 rounded-xl bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 text-[13px] font-medium">
             <PlusIcon className="w-3.5 h-3.5" /> New chat
           </button>
+          <div className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg bg-zinc-200/60 dark:bg-zinc-700/50">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="w-3 h-3 text-zinc-400 flex-shrink-0" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
+            <input
+              type="text"
+              value={sidebarSearch}
+              onChange={e => setSidebarSearch(e.target.value)}
+              placeholder="Search chats…"
+              className="flex-1 bg-transparent text-[12px] text-zinc-700 dark:text-zinc-200 placeholder-zinc-400 dark:placeholder-zinc-500 outline-none"
+            />
+            {sidebarSearch && (
+              <button onClick={() => setSidebarSearch('')} className="text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-3 h-3" strokeLinecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
+              </button>
+            )}
+          </div>
         </div>
         <SessionList />
         <div className="p-3 border-t border-zinc-200/70 dark:border-zinc-800 flex items-center gap-2">
