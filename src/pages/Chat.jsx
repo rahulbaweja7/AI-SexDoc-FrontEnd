@@ -274,6 +274,7 @@ export default function Chat() {
             if (parsed.error) throw new Error(parsed.error);
             if (parsed.token) {
               fullText += parsed.token;
+              await new Promise(r => setTimeout(r, 18));
               setMessages(prev => {
                 const updated = [...prev];
                 updated[updated.length - 1] = { sender: 'SERA', content: fullText, typing: true };
