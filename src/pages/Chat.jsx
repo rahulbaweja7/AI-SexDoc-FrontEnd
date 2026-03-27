@@ -236,6 +236,23 @@ export default function Chat() {
     if (token) headers['Authorization'] = `Bearer ${token}`;
 
     let fullText = '';
+    let displayedLen = 0;
+
+    // Drip interval — renders 2 chars every 20ms (~100 chars/sec) regardless of network speed
+    clearTypingInterval();
+    typingIntervalRef.current = setInterval(() => {
+      if (displayedLen < fullText.length) {
+        displayedLen = Math.min(displayedLen + 2, fullText.length);
+        const slice = fullText.slice(0, displayedLen);
+        setMessages(prev => {
+          const updated = [...prev];
+          if (updated.length && updated[updated.length - 1].sender === 'SERA') {
+            updated[updated.length - 1] = { sender: 'SERA', content: slice, typing: true };
+          }
+          return updated;
+        });
+      }
+    }, 20);
 
     try {
       // Capture history before the user message we just appended
@@ -274,12 +291,6 @@ export default function Chat() {
             if (parsed.error) throw new Error(parsed.error);
             if (parsed.token) {
               fullText += parsed.token;
-              await new Promise(r => setTimeout(r, 18));
-              setMessages(prev => {
-                const updated = [...prev];
-                updated[updated.length - 1] = { sender: 'SERA', content: fullText, typing: true };
-                return updated;
-              });
             }
           } catch (parseErr) {
             if (parseErr.message && !parseErr.message.includes('JSON')) throw parseErr;
@@ -287,7 +298,13 @@ export default function Chat() {
         }
       }
 
-      // Mark done
+      // Wait for drip interval to finish displaying all text, then mark done
+      await new Promise(resolve => {
+        const check = setInterval(() => {
+          if (displayedLen >= fullText.length) { clearInterval(check); resolve(); }
+        }, 30);
+      });
+      clearTypingInterval();
       setMessages(prev => {
         const updated = [...prev];
         updated[updated.length - 1] = { sender: 'SERA', content: fullText, typing: false };
