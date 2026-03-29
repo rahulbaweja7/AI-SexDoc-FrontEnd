@@ -701,7 +701,7 @@ export default function Chat() {
               </div>
               <div>
                 <p className="text-[13px] font-semibold text-zinc-900 dark:text-white leading-none">SERA</p>
-                <p className="text-[11px] text-zinc-400 dark:text-zinc-500 leading-none mt-0.5">always here</p>
+                <p className="text-[11px] text-zinc-400 dark:text-zinc-500 leading-none mt-0.5">always here for you</p>
               </div>
             </div>
           </div>
