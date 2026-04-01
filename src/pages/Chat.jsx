@@ -794,7 +794,7 @@ export default function Chat() {
                 onCompositionStart={() => { isComposingRef.current = true; }}
                 onCompositionEnd={() => { isComposingRef.current = false; }}
                 onInput={e => { e.target.style.height = 'auto'; e.target.style.height = Math.min(e.target.scrollHeight, 140) + 'px'; }}
-                placeholder="Ask anything…"
+                placeholder="Ask SERA anything…"
                 rows={1}
                 className="flex-1 border-0 outline-none text-[14px] text-zinc-900 dark:text-zinc-100 bg-transparent placeholder-zinc-400 dark:placeholder-zinc-600 resize-none py-1 px-1 leading-relaxed"
                 style={{ maxHeight: '140px' }}
