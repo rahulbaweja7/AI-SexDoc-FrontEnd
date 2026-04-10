@@ -4,7 +4,7 @@
 const API_BASE = import.meta.env.VITE_API_URL || 'https://ai-sexdoc-backend.onrender.com';
 
 function getToken() {
-  return localStorage.getItem('sera.token');
+  return localStorage.getItem('sera.jwt');
 }
 
 function authHeaders() {
