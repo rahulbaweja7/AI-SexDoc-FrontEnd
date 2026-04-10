@@ -147,7 +147,23 @@ export default function Chat() {
     const s = getSession(sessionId);
     if (s?.messages.length) { setMessages(s.messages); greetedRef.current = true; }
   }, [sessionId]);
-  useEffect(() => { refreshSessions(); }, []);
+  useEffect(() => {
+    refreshSessions();
+    // If no session in URL and user is logged in, create a DB session immediately
+    if (!initialSessionId && token) {
+      dbCreateSession('New chat').then(s => {
+        setSessionId(s.id);
+        navigate(`/chat?session=${encodeURIComponent(s.id)}`, { replace: true });
+      }).catch(() => {
+        const s = createSession('New chat');
+        setSessionId(s.id);
+        navigate(`/chat?session=${encodeURIComponent(s.id)}`, { replace: true });
+      });
+    } else if (!initialSessionId) {
+      const s = createSession('New chat');
+      setSessionId(s.id);
+    }
+  }, []);
   useEffect(() => {
     const close = () => setMenuSessionId('');
     window.addEventListener('click', close);
