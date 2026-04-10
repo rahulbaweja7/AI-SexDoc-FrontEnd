@@ -3,6 +3,7 @@ import { Navigate, useLocation, useNavigate, Link } from 'react-router-dom';
 import ReactMarkdown from 'react-markdown';
 import { useAuth } from '../context/AuthContext.jsx';
 import { createSession, getSession, addMessageToSession, getAllSessions, renameSession, deleteSession } from '../utils/sessions.js';
+import { dbGetSessions, dbCreateSession, dbGetSession, dbRenameSession, dbDeleteSession, dbSaveMessages } from '../utils/dbSessions.js';
 
 const isLocal = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
 const isDevProxy = typeof window !== 'undefined' && (window.location.port === '5500' || window.location.port === '5173');
@@ -164,7 +165,16 @@ export default function Chat() {
     setMessages(prev => prev.length === 0 ? [{ sender: 'SERA', content: greeting }] : prev);
   }, []);
 
-  function refreshSessions() { setSessionList(getAllSessions()); }
+  async function refreshSessions() {
+    if (token) {
+      try {
+        const dbList = await dbGetSessions();
+        setSessionList(dbList);
+        return;
+      } catch {}
+    }
+    setSessionList(getAllSessions());
+  }
   function appendMessage(sender, content) { setMessages(prev => [...prev, { sender, content }]); }
   const audioRef = useRef(null);
 
@@ -314,13 +324,23 @@ export default function Chat() {
       if (fullText) {
         const entry = { timestamp: startedAt, userMessage: content, reply: fullText };
         persistHistory(entry);
-        addMessageToSession(currentSessionId, { sender: 'SERA', content: fullText, timestamp: Date.now() });
+        // Save to MongoDB if logged in, otherwise localStorage
+        if (token) {
+          try {
+            await dbSaveMessages(currentSessionId, [
+              ...messages.filter(m => m.content && !m.typing),
+              { sender: 'You', content },
+              { sender: 'SERA', content: fullText },
+            ]);
+          } catch {
+            addMessageToSession(currentSessionId, { sender: 'You', content, timestamp: startedAt });
+            addMessageToSession(currentSessionId, { sender: 'SERA', content: fullText, timestamp: Date.now() });
+          }
+        } else {
+          addMessageToSession(currentSessionId, { sender: 'You', content, timestamp: startedAt });
+          addMessageToSession(currentSessionId, { sender: 'SERA', content: fullText, timestamp: Date.now() });
+        }
         refreshSessions();
-        try {
-          const h = { 'Content-Type': 'application/json' };
-          if (token) h['Authorization'] = `Bearer ${token}`;
-          fetch(`${API_BASE}/history`, { method: 'POST', headers: h, body: JSON.stringify(entry) }).catch(() => {});
-        } catch {}
       }
     } catch (err) {
       if (controller.signal.aborted) {
@@ -483,13 +503,23 @@ export default function Chat() {
     setListeningStatus('');
   }
 
-  function newChat() {
+  async function newChat() {
     stopAll();
     setText('');
     setListeningStatus('');
-    const s = createSession('New chat');
-    setSessionId(s.id);
-    navigate(`/chat?session=${encodeURIComponent(s.id)}`);
+    let sessionId;
+    if (token) {
+      try {
+        const s = await dbCreateSession('New chat');
+        sessionId = s.id;
+      } catch {}
+    }
+    if (!sessionId) {
+      const s = createSession('New chat');
+      sessionId = s.id;
+    }
+    setSessionId(sessionId);
+    navigate(`/chat?session=${encodeURIComponent(sessionId)}`);
     greetedRef.current = true;
     const profile = (() => { try { return JSON.parse(localStorage.getItem('sera.onboarding') || '{}'); } catch { return {}; } })();
     const name = profile.name ? `, ${profile.name}` : '';
@@ -497,12 +527,19 @@ export default function Chat() {
     refreshSessions();
   }
 
-  function openSession(id) {
+  async function openSession(id) {
     setSessionId(id);
     navigate(`/chat?session=${encodeURIComponent(id)}`);
+    setSidebarOpen(false);
+    if (token) {
+      try {
+        const s = await dbGetSession(id);
+        setMessages(s.messages || []);
+        return;
+      } catch {}
+    }
     const s = getSession(id);
     setMessages(s?.messages || []);
-    setSidebarOpen(false);
   }
 
   function handleKeyDown(e) {
@@ -555,8 +592,8 @@ export default function Chat() {
           </button>
           {menuSessionId === s.id && (
             <div onClick={e => e.stopPropagation()} className="absolute z-50 right-2 top-full mt-1 w-36 rounded-xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 shadow-xl py-1 text-[13px]">
-              <button onClick={() => { const n = prompt('Rename', s.title || ''); if (n !== null) { renameSession(s.id, n.trim() || 'Untitled'); refreshSessions(); setMenuSessionId(''); } }} className="w-full text-left px-3 py-2 text-zinc-700 dark:text-zinc-200 hover:bg-zinc-50 dark:hover:bg-zinc-800">Rename</button>
-              <button onClick={() => { if (confirm('Delete this chat?')) { deleteSession(s.id); refreshSessions(); setMenuSessionId(''); if (sessionId === s.id) { setSessionId(''); setMessages([]); } } }} className="w-full text-left px-3 py-2 text-red-500 hover:bg-zinc-50 dark:hover:bg-zinc-800">Delete</button>
+              <button onClick={async () => { const n = prompt('Rename', s.title || ''); if (n !== null) { const t = n.trim() || 'Untitled'; if (token) { try { await dbRenameSession(s.id, t); } catch { renameSession(s.id, t); } } else { renameSession(s.id, t); } refreshSessions(); setMenuSessionId(''); } }} className="w-full text-left px-3 py-2 text-zinc-700 dark:text-zinc-200 hover:bg-zinc-50 dark:hover:bg-zinc-800">Rename</button>
+              <button onClick={async () => { if (confirm('Delete this chat?')) { if (token) { try { await dbDeleteSession(s.id); } catch { deleteSession(s.id); } } else { deleteSession(s.id); } refreshSessions(); setMenuSessionId(''); if (sessionId === s.id) { setSessionId(''); setMessages([]); } } }} className="w-full text-left px-3 py-2 text-red-500 hover:bg-zinc-50 dark:hover:bg-zinc-800">Delete</button>
             </div>
           )}
         </div>
